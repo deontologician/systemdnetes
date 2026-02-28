@@ -23,8 +23,14 @@ These are high level tasks that need to be implemented.
 - [x] Systemd effect for machinectl operations
   - [x] Effect GADT: ListContainers, GetContainer, StartContainer, StopContainer
   - [x] Pure interpreter (nested Map) for testing
-  - [ ] Real IO interpreter: SSH + machinectl commands
+  - [ ] Real IO interpreter: SSH + machinectl commands (Ssh effect exists, Systemd IO interpreter still stubbed)
   - [ ] Connection pooling / multiplexed SSH sessions
+- [x] NodeStore effect: register, list, get, remove nodes
+  - [x] Pure interpreter (Map via State) for testing
+  - [x] IO interpreter (TVar) for production
+- [x] Ssh effect: run commands on remote nodes
+  - [x] Pure interpreter (canned responses from Map) for testing
+  - [x] IO interpreter (shells out to `ssh` with timeout)
 - [ ] Resource ledger: track CPU/memory commitments per node (not just actual usage)
 - [ ] Scheduler: given a pod's resource requests and the ledger, pick a node
 - [ ] Reconciliation loop:
@@ -37,14 +43,23 @@ These are high level tasks that need to be implemented.
 
 ## Node Setup
 
-- [ ] Base NixOS configuration for nodes: enable nspawn, configure shared `/nix/store` bind mount, SSH access for orchestrator
+- [x] Base NixOS configuration for worker nodes (`nix/modules/worker.nix`)
+  - [x] Enable nspawn (`systemd.targets.machines`, `/var/lib/machines`)
+  - [x] SSH access for orchestrator (dedicated `systemdnetes` user, authorized keys)
+  - [x] Passwordless sudo for `machinectl` and `systemctl`
+- [x] NixOS module for orchestrator (`nix/modules/orchestrator.nix`)
+  - [x] Systemd service for the Haskell binary
+  - [x] Firewall rules (API port TCP, WireGuard UDP)
 - [ ] Handle reboot recovery: orchestrator detects containers are gone after reboot and re-pushes
 
 ## Networking (WireGuard)
 
+- [x] Orchestrator WireGuard interface with static worker peers (`nix/modules/orchestrator.nix`)
+- [x] Worker WireGuard interface peered with orchestrator (`nix/modules/worker.nix`)
+- [x] Pod CIDR configuration on both sides
+- [x] DNS for pod zone: dnsmasq authoritative on orchestrator, workers forward pod zone queries
 - [ ] IP allocation: orchestrator assigns a unique WireGuard IP per pod from a managed CIDR block
 - [ ] Key management: generate WireGuard keypairs per pod, distribute public keys to peers
-- [ ] Host-side WireGuard config: each node maintains a WireGuard interface with peers for all pods on that node
 - [ ] Pod-side WireGuard config: injected into the pod's NixOS config via the wrapper module
 - [ ] Peer update loop: as pods come and go, update WireGuard peer configs on affected nodes
 
