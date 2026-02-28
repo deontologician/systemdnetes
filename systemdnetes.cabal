@@ -63,6 +63,8 @@ library
     Systemdnetes.Effects.Store.Interpreter
     Systemdnetes.Effects.Systemd
     Systemdnetes.Effects.Systemd.Interpreter
+    Systemdnetes.Effects.WireGuardControl
+    Systemdnetes.Effects.WireGuardControl.Interpreter
   build-depends:
     , aeson
     , bytestring
@@ -108,6 +110,7 @@ test-suite systemdnetes-test
     Systemdnetes.Effects.StoreSpec
     Systemdnetes.Effects.SystemdSpec
     Systemdnetes.Effects.UpdateChainSpec
+    Systemdnetes.Effects.WireGuardControlSpec
   build-depends:
     , aeson
     , bytestring

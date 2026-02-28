@@ -17,6 +17,7 @@ import Systemdnetes.Effects.SshSpec qualified as SshSpec
 import Systemdnetes.Effects.StoreSpec qualified as StoreSpec
 import Systemdnetes.Effects.SystemdSpec qualified as SystemdSpec
 import Systemdnetes.Effects.UpdateChainSpec qualified as UpdateChainSpec
+import Systemdnetes.Effects.WireGuardControlSpec qualified as WireGuardControlSpec
 import Test.Tasty (defaultMain, testGroup)
 
 main :: IO ()
@@ -40,5 +41,6 @@ main =
         StoreSpec.tests,
         SystemdSpec.tests,
         ReconcileSpec.tests,
-        UpdateChainSpec.tests
+        UpdateChainSpec.tests,
+        WireGuardControlSpec.tests
       ]

@@ -21,6 +21,8 @@ module Systemdnetes
     module Systemdnetes.Effects.Store.Interpreter,
     module Systemdnetes.Effects.Systemd,
     module Systemdnetes.Effects.Systemd.Interpreter,
+    module Systemdnetes.Effects.WireGuardControl,
+    module Systemdnetes.Effects.WireGuardControl.Interpreter,
     module Systemdnetes.Api,
     module Systemdnetes.App,
   )
@@ -50,3 +52,5 @@ import Systemdnetes.Effects.Store
 import Systemdnetes.Effects.Store.Interpreter
 import Systemdnetes.Effects.Systemd
 import Systemdnetes.Effects.Systemd.Interpreter
+import Systemdnetes.Effects.WireGuardControl
+import Systemdnetes.Effects.WireGuardControl.Interpreter
