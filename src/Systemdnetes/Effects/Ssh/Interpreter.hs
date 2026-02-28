@@ -37,6 +37,8 @@ sshToIO = interpret $ \case
           "ConnectTimeout=2",
           "-o",
           "StrictHostKeyChecking=no",
+          "-o",
+          "UserKnownHostsFile=/dev/null",
           addr,
           T.unpack cmd
         ]

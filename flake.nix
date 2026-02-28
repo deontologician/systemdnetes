@@ -27,6 +27,14 @@
           mkdir -p $out/static
           cp ${./static}/* $out/static/
         '';
+        # Minimal passwd/group with root home set to /root (not /var/empty)
+        passwdFile = pkgs.runCommand "passwd" { } ''
+          mkdir -p $out/etc
+          echo 'root:x:0:0:root:/root:/bin/bash' > $out/etc/passwd
+          echo 'root:x:0:' > $out/etc/group
+          echo 'nobody:x:65534:65534:nobody:/nonexistent:/bin/false' >> $out/etc/passwd
+          echo 'nogroup:x:65534:' >> $out/etc/group
+        '';
       in
       {
         packages = {
@@ -43,10 +51,12 @@
                 pkgs.coreutils  # mkdir, chmod
                 pkgs.bash
                 staticFiles
+                passwdFile
               ];
               pathsToLink = [ "/bin" "/etc" "/static" ];
             };
             config = {
+              Env = [ "PATH=/bin" ];
               Entrypoint = [
                 "${pkgs.bash}/bin/bash" "-c" ''
                   set -euo pipefail
@@ -87,10 +97,12 @@
                   pkgs.gawk
                   pkgs.bash
                   healthScript
+                  passwdFile
                 ];
                 pathsToLink = [ "/bin" "/etc" ];
               };
               config = {
+                Env = [ "PATH=/bin" ];
                 Entrypoint = [
                   "${pkgs.bash}/bin/bash" "-c" ''
                     set -euo pipefail
