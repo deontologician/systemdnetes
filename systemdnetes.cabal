@@ -8,6 +8,8 @@ common shared
   default-language: GHC2021
   default-extensions:
     DataKinds
+    DeriveAnyClass
+    DeriveGeneric
     DerivingStrategies
     FlexibleContexts
     GADTs
@@ -38,9 +40,13 @@ library
   exposed-modules:
     Systemdnetes
     Systemdnetes.App
+    Systemdnetes.Domain.Node
+    Systemdnetes.Domain.Pod
     Systemdnetes.Effects.Log
     Systemdnetes.Effects.Log.Interpreter
   build-depends:
+    , aeson
+    , containers
     , text
     , time
 
