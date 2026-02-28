@@ -10,6 +10,7 @@ import Systemdnetes.Domain.ReconcileSpec qualified as ReconcileSpec
 import Systemdnetes.Domain.ResourceSpec qualified as ResourceSpec
 import Systemdnetes.Domain.WireGuardSpec qualified as WireGuardSpec
 import Systemdnetes.Effects.FileServerSpec qualified as FileServerSpec
+import Systemdnetes.Effects.IpAllocatorSpec qualified as IpAllocatorSpec
 import Systemdnetes.Effects.LogSpec qualified as LogSpec
 import Systemdnetes.Effects.NodeStoreSpec qualified as NodeStoreSpec
 import Systemdnetes.Effects.SshSpec qualified as SshSpec
@@ -32,6 +33,7 @@ main =
         ResourceSpec.tests,
         WireGuardSpec.tests,
         FileServerSpec.tests,
+        IpAllocatorSpec.tests,
         LogSpec.tests,
         NodeStoreSpec.tests,
         SshSpec.tests,

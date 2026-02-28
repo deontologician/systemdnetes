@@ -51,6 +51,8 @@ library
     Systemdnetes.Domain.WireGuard
     Systemdnetes.Effects.FileServer
     Systemdnetes.Effects.FileServer.Interpreter
+    Systemdnetes.Effects.IpAllocator
+    Systemdnetes.Effects.IpAllocator.Interpreter
     Systemdnetes.Effects.Log
     Systemdnetes.Effects.Log.Interpreter
     Systemdnetes.Effects.NodeStore
@@ -99,6 +101,7 @@ test-suite systemdnetes-test
     Systemdnetes.Domain.ResourceSpec
     Systemdnetes.Domain.WireGuardSpec
     Systemdnetes.Effects.FileServerSpec
+    Systemdnetes.Effects.IpAllocatorSpec
     Systemdnetes.Effects.LogSpec
     Systemdnetes.Effects.NodeStoreSpec
     Systemdnetes.Effects.SshSpec

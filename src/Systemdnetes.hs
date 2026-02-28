@@ -9,6 +9,8 @@ module Systemdnetes
     module Systemdnetes.Domain.WireGuard,
     module Systemdnetes.Effects.FileServer,
     module Systemdnetes.Effects.FileServer.Interpreter,
+    module Systemdnetes.Effects.IpAllocator,
+    module Systemdnetes.Effects.IpAllocator.Interpreter,
     module Systemdnetes.Effects.Log,
     module Systemdnetes.Effects.Log.Interpreter,
     module Systemdnetes.Effects.NodeStore,
@@ -36,6 +38,8 @@ import Systemdnetes.Domain.Resource
 import Systemdnetes.Domain.WireGuard
 import Systemdnetes.Effects.FileServer
 import Systemdnetes.Effects.FileServer.Interpreter
+import Systemdnetes.Effects.IpAllocator
+import Systemdnetes.Effects.IpAllocator.Interpreter
 import Systemdnetes.Effects.Log
 import Systemdnetes.Effects.Log.Interpreter
 import Systemdnetes.Effects.NodeStore
