@@ -43,6 +43,7 @@ library
     Systemdnetes.App
     Systemdnetes.Domain.Node
     Systemdnetes.Domain.Pod
+    Systemdnetes.Domain.Resource
     Systemdnetes.Effects.Log
     Systemdnetes.Effects.Log.Interpreter
     Systemdnetes.Effects.Store
