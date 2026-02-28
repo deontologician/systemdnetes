@@ -25,7 +25,7 @@ storeToPure initial =
     . reinterpret
       ( \case
           SubmitPod spec -> do
-            let pod = Pod {podSpec = spec, podState = Pending, podNode = Nothing}
+            let pod = Pod {podSpec = spec, podState = Pending, podNode = Nothing, podNetwork = Nothing}
             modify' @StoreState $ Map.insert (podName spec) pod
           ListPods -> do
             s <- get @StoreState
@@ -50,7 +50,7 @@ storeToPure initial =
 storeToIO :: (Member (Embed IO) r) => TVar StoreState -> Sem (Store ': r) a -> Sem r a
 storeToIO var = interpret $ \case
   SubmitPod spec -> embed $ atomically $ TVar.modifyTVar' var $ \s ->
-    let pod = Pod {podSpec = spec, podState = Pending, podNode = Nothing}
+    let pod = Pod {podSpec = spec, podState = Pending, podNode = Nothing, podNetwork = Nothing}
      in Map.insert (podName spec) pod s
   ListPods -> embed $ Map.elems <$> readTVarIO var
   GetPod name -> embed $ Map.lookup name <$> readTVarIO var

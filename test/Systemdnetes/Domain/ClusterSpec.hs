@@ -47,6 +47,7 @@ genPod mNode =
     <$> genPodSpec
     <*> Gen.element [Pending, Scheduled, Running]
     <*> pure mNode
+    <*> pure Nothing
 
 prop_emptyZero :: Property
 prop_emptyZero = property $ do

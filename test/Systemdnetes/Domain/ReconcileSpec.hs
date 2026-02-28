@@ -50,21 +50,21 @@ genPodSpec =
 prop_pendingNoNodeSchedules :: Property
 prop_pendingNoNodeSchedules = property $ do
   spec <- forAll genPodSpec
-  let pod = Pod {podSpec = spec, podState = Pending, podNode = Nothing}
+  let pod = Pod {podSpec = spec, podState = Pending, podNode = Nothing, podNetwork = Nothing}
   reconcilePod pod Nothing Nothing === SchedulePod (podName spec)
 
 prop_scheduledNoContainerStarts :: Property
 prop_scheduledNoContainerStarts = property $ do
   spec <- forAll genPodSpec
   node <- forAll genNodeName
-  let pod = Pod {podSpec = spec, podState = Scheduled, podNode = Just node}
+  let pod = Pod {podSpec = spec, podState = Scheduled, podNode = Just node, podNetwork = Nothing}
   reconcilePod pod Nothing Nothing === StartPod (podName spec) node
 
 prop_runningMatchingFlakeIsNoAction :: Property
 prop_runningMatchingFlakeIsNoAction = property $ do
   spec <- forAll genPodSpec
   node <- forAll genNodeName
-  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node}
+  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node, podNetwork = Nothing}
       currentFlake = podFlakeRef spec
   reconcilePod pod (Just ContainerRunning) (Just currentFlake) === NoAction (podName spec)
 
@@ -73,7 +73,7 @@ prop_runningDifferentFlakeRebuilds = property $ do
   spec <- forAll genPodSpec
   node <- forAll genNodeName
   otherFlake <- forAll genFlakeRef
-  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node}
+  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node, podNetwork = Nothing}
   -- Use a flake ref that differs from the pod's spec
   case otherFlake == podFlakeRef spec of
     True -> discard
@@ -83,28 +83,28 @@ prop_runningNoFlakeInfoRebuilds :: Property
 prop_runningNoFlakeInfoRebuilds = property $ do
   spec <- forAll genPodSpec
   node <- forAll genNodeName
-  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node}
+  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node, podNetwork = Nothing}
   reconcilePod pod (Just ContainerRunning) Nothing === RebuildPod (podName spec) node (podFlakeRef spec)
 
 prop_stoppedContainerStarts :: Property
 prop_stoppedContainerStarts = property $ do
   spec <- forAll genPodSpec
   node <- forAll genNodeName
-  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node}
+  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node, podNetwork = Nothing}
   reconcilePod pod (Just ContainerStopped) Nothing === StartPod (podName spec) node
 
 prop_failedContainerStarts :: Property
 prop_failedContainerStarts = property $ do
   spec <- forAll genPodSpec
   node <- forAll genNodeName
-  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node}
+  let pod = Pod {podSpec = spec, podState = Running, podNode = Just node, podNetwork = Nothing}
   reconcilePod pod (Just ContainerFailed) Nothing === StartPod (podName spec) node
 
 prop_rebuildActionCarriesDesiredFlakeRef :: Property
 prop_rebuildActionCarriesDesiredFlakeRef = property $ do
   spec <- forAll genPodSpec
   node <- forAll genNodeName
-  let pod = Pod {podSpec = spec, podState = Rebuilding, podNode = Just node}
+  let pod = Pod {podSpec = spec, podState = Rebuilding, podNode = Just node, podNetwork = Nothing}
       desiredFlake = podFlakeRef spec
   -- When no current flake info, rebuild carries the pod's spec flake ref
   case reconcilePod pod (Just ContainerRunning) Nothing of

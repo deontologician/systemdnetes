@@ -52,6 +52,7 @@ genPod =
     <$> genPodSpec
     <*> genPodState
     <*> Gen.maybe (NodeName <$> genText)
+    <*> pure Nothing
 
 genContainerState :: Gen ContainerState
 genContainerState = Gen.element [ContainerRunning, ContainerStopped, ContainerFailed]
