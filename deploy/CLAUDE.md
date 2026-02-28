@@ -1,25 +1,115 @@
-# Deployment -- Fly Machines
+# Deployment -- Fly Machines (3-Machine Cluster)
 
-OCI container image built by Nix (no Docker required).
+3 Fly Machines: 1 orchestrator (API server + SSH client), 2 workers (sshd + health script).
 
-## Build
+## Architecture
+
+- **Orchestrator**: runs the systemdnetes binary, SSHes to workers for health checks
+- **Workers**: plain machines with sshd, accept SSH from orchestrator, run `systemdnetes-health` script
+
+Communication uses Fly private networking (6PN / `fdaa::` addresses).
+
+## Build Images
 
 ```bash
+# Orchestrator (API server + openssh client)
 nix build .#container
+# result -> OCI tar.gz
+
+# Worker (sshd + health script)
+nix build .#worker
+# result -> OCI tar.gz
 ```
 
-This produces `result` -- a `.tar.gz` OCI image containing just the binary.
-
-## Deploy
+## Deploy Orchestrator
 
 ```bash
 fly auth docker
-# Option A: skopeo
+
+# Push orchestrator image
 skopeo copy docker-archive:result docker://registry.fly.io/systemdnetes:latest
 fly deploy --image registry.fly.io/systemdnetes:latest
+```
 
-# Option B: local image
-fly deploy --local-only --image systemdnetes:latest
+## Deploy Workers
+
+Workers are standalone machines, not managed by `fly deploy`. Use `fly machine run`:
+
+```bash
+# Build and load worker image
+nix build .#worker
+skopeo copy docker-archive:result docker://registry.fly.io/systemdnetes:worker
+
+# Create worker 1
+fly machine run registry.fly.io/systemdnetes:worker \
+  --name worker-1 \
+  --region ord \
+  --app systemdnetes
+
+# Create worker 2
+fly machine run registry.fly.io/systemdnetes:worker \
+  --name worker-2 \
+  --region ord \
+  --app systemdnetes
+```
+
+## Set Secrets
+
+### Generate SSH keypair (one-time)
+
+```bash
+ssh-keygen -t ed25519 -f /tmp/systemdnetes-key -N ""
+```
+
+### Set orchestrator secret
+
+```bash
+fly secrets set SSH_PRIVATE_KEY="$(cat /tmp/systemdnetes-key)" --app systemdnetes
+```
+
+### Set worker secrets
+
+Workers need the public key. Set via `fly machine update`:
+
+```bash
+PUB_KEY=$(cat /tmp/systemdnetes-key.pub)
+
+fly machine update <worker-1-id> \
+  --env SSH_AUTHORIZED_KEYS="$PUB_KEY" \
+  --app systemdnetes
+
+fly machine update <worker-2-id> \
+  --env SSH_AUTHORIZED_KEYS="$PUB_KEY" \
+  --app systemdnetes
+```
+
+## Register Workers
+
+Get worker 6PN addresses from `fly machine list`, then register:
+
+```bash
+API=https://systemdnetes.fly.dev
+
+# Register worker nodes
+curl -X POST "$API/api/v1/nodes" \
+  -H 'Content-Type: application/json' \
+  -d '{"nodeName":"worker-1","nodeAddress":"fdaa:x:x::a"}'
+
+curl -X POST "$API/api/v1/nodes" \
+  -H 'Content-Type: application/json' \
+  -d '{"nodeName":"worker-2","nodeAddress":"fdaa:x:x::b"}'
+```
+
+## Verify
+
+```bash
+# List nodes with live health status
+curl "$API/api/v1/nodes"
+
+# Check single node
+curl "$API/api/v1/nodes/worker-1"
+
+# Should show Healthy with uptime/load/memory JSON
 ```
 
 ## Configuration
@@ -27,5 +117,13 @@ fly deploy --local-only --image systemdnetes:latest
 `fly.toml` in the repo root:
 - App name: `systemdnetes`
 - Internal port: 8080
-- Auto-stop/start enabled (cost savings)
-- Health check: `GET /`
+- Auto-stop off (orchestrator must stay running for health checks)
+- Health check: `GET /healthz`
+
+## Updating Workers
+
+```bash
+nix build .#worker
+skopeo copy docker-archive:result docker://registry.fly.io/systemdnetes:worker
+fly machine update <worker-id> --image registry.fly.io/systemdnetes:worker
+```
