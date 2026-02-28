@@ -6,7 +6,7 @@ module Systemdnetes.Domain.Resource
   )
 where
 
-import Data.Aeson (ToJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Read (decimal)
@@ -15,12 +15,12 @@ import GHC.Generics (Generic)
 -- | CPU in thousandths of a core. "500m" = 500, "2" = 2000.
 newtype Millicores = Millicores Int
   deriving stock (Eq, Ord, Show, Generic)
-  deriving newtype (ToJSON, Num)
+  deriving newtype (FromJSON, ToJSON, Num)
 
 -- | Memory in mebibytes. "512Mi" = 512, "1Gi" = 1024.
 newtype Mebibytes = Mebibytes Int
   deriving stock (Eq, Ord, Show, Generic)
-  deriving newtype (ToJSON, Num)
+  deriving newtype (FromJSON, ToJSON, Num)
 
 -- | Parse a CPU resource string. Returns 'Nothing' on malformed input.
 --

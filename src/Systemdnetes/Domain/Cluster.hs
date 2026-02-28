@@ -12,16 +12,9 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Systemdnetes.Domain.Node (Node (..))
+import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..))
 import Systemdnetes.Domain.Pod (Pod (..), PodName (..), PodSpec (..), PodState (..), ResourceRequests (..))
 import Systemdnetes.Domain.Resource
-
-data NodeCapacity = NodeCapacity
-  { capacityCpu :: Millicores,
-    capacityMemory :: Mebibytes
-  }
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (ToJSON)
 
 data PodView = PodView
   { pvName :: Text,
@@ -53,14 +46,14 @@ data ClusterState = ClusterState
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON)
 
--- | Build a cluster state view from node capacities and pods.
+-- | Build a cluster state view from nodes and pods.
 --
 -- Pods with a 'podNode' matching a known node are grouped under that node.
 -- Pods without a node assignment (or assigned to an unknown node) go into
 -- the unscheduled list.
-buildClusterState :: [(Node, NodeCapacity)] -> [Pod] -> ClusterState
-buildClusterState nodeCapacities pods =
-  let capMap = Map.fromList [(nodeName n, (n, cap)) | (n, cap) <- nodeCapacities]
+buildClusterState :: [Node] -> [Pod] -> ClusterState
+buildClusterState nodes pods =
+  let nodeMap = Map.fromList [(nodeName n, n) | n <- nodes]
 
       -- Partition pods by node assignment
       (scheduled, unscheduled) = foldl' partitionPod (Map.empty, []) pods
@@ -68,7 +61,7 @@ buildClusterState nodeCapacities pods =
           partitionPod (acc, unsched) pod =
             case podNode pod of
               Just nn
-                | Map.member nn capMap ->
+                | Map.member nn nodeMap ->
                     (Map.insertWith (++) nn [pod] acc, unsched)
               _ -> (acc, pod : unsched)
 
@@ -77,14 +70,15 @@ buildClusterState nodeCapacities pods =
         [ let nodePods = Map.findWithDefault [] nn scheduled
               podViews = map toPodView nodePods
               usage = sumUsage podViews
+              cap = nodeCapacity node
            in NodeView node cap usage podViews
-        | (nn, (node, cap)) <- Map.toAscList capMap
+        | (nn, node) <- Map.toAscList nodeMap
         ]
 
       unscheduledViews = map toPodView (reverse unscheduled)
 
-      totalCpu = sum [capacityCpu cap | (_, cap) <- nodeCapacities]
-      totalMem = sum [capacityMemory cap | (_, cap) <- nodeCapacities]
+      totalCpu = sum [capacityCpu (nodeCapacity n) | n <- nodes]
+      totalMem = sum [capacityMemory (nodeCapacity n) | n <- nodes]
       usedCpu = sum [capacityCpu (nvUsage nv) | nv <- nodeViews]
       usedMem = sum [capacityMemory (nvUsage nv) | nv <- nodeViews]
    in ClusterState
