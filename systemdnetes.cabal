@@ -39,6 +39,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Systemdnetes
+    Systemdnetes.Api
     Systemdnetes.App
     Systemdnetes.Domain.Node
     Systemdnetes.Domain.Pod
@@ -50,18 +51,21 @@ library
     Systemdnetes.Effects.Systemd.Interpreter
   build-depends:
     , aeson
+    , bytestring
     , containers
+    , http-types
     , stm
     , text
     , time
+    , wai
 
 executable systemdnetes
   import:          shared
   hs-source-dirs:  app
   main-is:         Main.hs
   build-depends:
-    , bytestring
     , http-types
+    , stm
     , systemdnetes
     , wai
     , warp

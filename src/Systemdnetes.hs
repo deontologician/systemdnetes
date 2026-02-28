@@ -7,10 +7,12 @@ module Systemdnetes
     module Systemdnetes.Effects.Store.Interpreter,
     module Systemdnetes.Effects.Systemd,
     module Systemdnetes.Effects.Systemd.Interpreter,
+    module Systemdnetes.Api,
     module Systemdnetes.App,
   )
 where
 
+import Systemdnetes.Api
 import Systemdnetes.App
 import Systemdnetes.Domain.Node
 import Systemdnetes.Domain.Pod
