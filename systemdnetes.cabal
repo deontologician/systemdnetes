@@ -41,8 +41,10 @@ library
     Systemdnetes
     Systemdnetes.Api
     Systemdnetes.App
+    Systemdnetes.Domain.Cluster
     Systemdnetes.Domain.Node
     Systemdnetes.Domain.Pod
+    Systemdnetes.Domain.Resource
     Systemdnetes.Effects.Log
     Systemdnetes.Effects.Log.Interpreter
     Systemdnetes.Effects.NodeStore
@@ -81,6 +83,8 @@ test-suite systemdnetes-test
   hs-source-dirs:  test
   main-is:         Main.hs
   other-modules:
+    Systemdnetes.Domain.ClusterSpec
+    Systemdnetes.Domain.ResourceSpec
     Systemdnetes.Effects.LogSpec
     Systemdnetes.Effects.NodeStoreSpec
     Systemdnetes.Effects.SshSpec

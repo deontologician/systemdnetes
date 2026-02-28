@@ -55,6 +55,18 @@ nix build .#container                          # Build OCI image
 6. Wire into `AppEffects` in `src/Systemdnetes/App.hs`
 7. Register tests in `test/Main.hs`
 
+## Git workflow
+
+Split work into small, self-contained commits. Each commit must build successfully on its own (`cabal build all` must pass). When a commit adds source files, the cabal file update goes in the same commit so the build never breaks.
+
+Typical split for a new effect:
+
+1. Library changes (effect algebra, interpreter, cabal `exposed-modules`, re-export)
+2. Tests (spec module, cabal `other-modules`, test runner registration)
+3. Wiring (App.hs stack update, any executable changes)
+
+Write descriptive commit messages: summary line says *what*, body says *why* and lists key details.
+
 ## Deployment
 
 Fly Machines via Nix-built OCI image. See `deploy/CLAUDE.md`.

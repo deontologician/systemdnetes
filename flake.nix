@@ -23,6 +23,10 @@
           };
         };
         systemdnetes = haskellPackages.systemdnetes;
+        staticFiles = pkgs.runCommand "systemdnetes-static" { } ''
+          mkdir -p $out/static
+          cp ${./static}/* $out/static/
+        '';
       in
       {
         packages = {
@@ -38,8 +42,9 @@
                 pkgs.openssh    # ssh client for health checks
                 pkgs.coreutils  # mkdir, chmod
                 pkgs.bash
+                staticFiles
               ];
-              pathsToLink = [ "/bin" "/etc" ];
+              pathsToLink = [ "/bin" "/etc" "/static" ];
             };
             config = {
               Entrypoint = [
@@ -53,6 +58,7 @@
                   exec ${pkgs.lib.getBin systemdnetes}/bin/systemdnetes
                 ''
               ];
+              WorkingDir = "/";
               ExposedPorts = { "8080/tcp" = { }; };
             };
           };
