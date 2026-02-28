@@ -4,16 +4,23 @@ module Systemdnetes.Effects.Store
     listPods,
     getPod,
     deletePod,
+    updatePodSpec,
+    setPodState,
+    assignPodNode,
   )
 where
 
 import Polysemy
-import Systemdnetes.Domain.Pod (Pod, PodName, PodSpec)
+import Systemdnetes.Domain.Node (NodeName)
+import Systemdnetes.Domain.Pod (Pod, PodName, PodSpec, PodState)
 
 data Store m a where
   SubmitPod :: PodSpec -> Store m ()
   ListPods :: Store m [Pod]
   GetPod :: PodName -> Store m (Maybe Pod)
   DeletePod :: PodName -> Store m ()
+  UpdatePodSpec :: PodName -> PodSpec -> Store m ()
+  SetPodState :: PodName -> PodState -> Store m ()
+  AssignPodNode :: PodName -> NodeName -> Store m ()
 
 makeSem ''Store

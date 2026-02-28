@@ -35,6 +35,15 @@ storeToPure initial =
             pure $ Map.lookup name s
           DeletePod name ->
             modify' @StoreState $ Map.delete name
+          UpdatePodSpec name spec ->
+            modify' @StoreState $
+              Map.adjust (\pod -> pod {podSpec = spec, podState = Rebuilding}) name
+          SetPodState name st ->
+            modify' @StoreState $
+              Map.adjust (\pod -> pod {podState = st}) name
+          AssignPodNode name node ->
+            modify' @StoreState $
+              Map.adjust (\pod -> pod {podNode = Just node, podState = Scheduled}) name
       )
 
 -- | IO interpreter backed by a TVar for concurrent access across requests.
@@ -46,3 +55,18 @@ storeToIO var = interpret $ \case
   ListPods -> embed $ Map.elems <$> readTVarIO var
   GetPod name -> embed $ Map.lookup name <$> readTVarIO var
   DeletePod name -> embed $ atomically $ TVar.modifyTVar' var $ Map.delete name
+  UpdatePodSpec name spec ->
+    embed $
+      atomically $
+        TVar.modifyTVar' var $
+          Map.adjust (\pod -> pod {podSpec = spec, podState = Rebuilding}) name
+  SetPodState name st ->
+    embed $
+      atomically $
+        TVar.modifyTVar' var $
+          Map.adjust (\pod -> pod {podState = st}) name
+  AssignPodNode name node ->
+    embed $
+      atomically $
+        TVar.modifyTVar' var $
+          Map.adjust (\pod -> pod {podNode = Just node, podState = Scheduled}) name

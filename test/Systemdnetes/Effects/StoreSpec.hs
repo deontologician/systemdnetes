@@ -6,6 +6,7 @@ import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Polysemy
+import Systemdnetes.Domain.Node (NodeName (..))
 import Systemdnetes.Domain.Pod (FlakeRef (..), Pod (..), PodName (..), PodSpec (..), PodState (..), ResourceRequests (..))
 import Systemdnetes.Effects.Store
 import Systemdnetes.Effects.Store.Interpreter
@@ -21,7 +22,13 @@ tests =
       testPropertyNamed "submitted pod starts in Pending state" "prop_submitPending" prop_submitPending,
       testPropertyNamed "deletePod then getPod returns Nothing" "prop_deleteGet" prop_deleteGet,
       testPropertyNamed "listPods on empty store returns []" "prop_listEmpty" prop_listEmpty,
-      testPropertyNamed "getPod on unknown name returns Nothing" "prop_getUnknown" prop_getUnknown
+      testPropertyNamed "getPod on unknown name returns Nothing" "prop_getUnknown" prop_getUnknown,
+      testPropertyNamed "updatePodSpec preserves node assignment" "prop_updatePodSpecPreservesNode" prop_updatePodSpecPreservesNode,
+      testPropertyNamed "updatePodSpec sets state to Rebuilding" "prop_updatePodSpecSetsRebuilding" prop_updatePodSpecSetsRebuilding,
+      testPropertyNamed "updatePodSpec changes the flake ref" "prop_updatePodSpecChangesFlakeRef" prop_updatePodSpecChangesFlakeRef,
+      testPropertyNamed "setPodState changes the state" "prop_setPodStateChangesState" prop_setPodStateChangesState,
+      testPropertyNamed "assignPodNode sets node and Scheduled" "prop_assignPodNodeSetsNodeAndScheduled" prop_assignPodNodeSetsNodeAndScheduled,
+      testPropertyNamed "updatePodSpec on unknown pod is noop" "prop_updatePodSpecUnknownIsNoop" prop_updatePodSpecUnknownIsNoop
     ]
 
 genText :: Gen Text
@@ -83,3 +90,79 @@ prop_getUnknown = property $ do
   name <- forAll (PodName <$> genText)
   let (_, result) = run $ storeToPure Map.empty (getPod name)
   result === Nothing
+
+genNodeName :: Gen NodeName
+genNodeName = NodeName <$> genText
+
+prop_updatePodSpecPreservesNode :: Property
+prop_updatePodSpecPreservesNode = property $ do
+  spec <- forAll genPodSpec
+  node <- forAll genNodeName
+  newSpec <- forAll genPodSpec
+  let newSpecSameName = newSpec {podName = podName spec}
+  let (_, result) = run $ storeToPure Map.empty $ do
+        submitPod spec
+        assignPodNode (podName spec) node
+        updatePodSpec (podName spec) newSpecSameName
+        getPod (podName spec)
+  case result of
+    Just pod -> podNode pod === Just node
+    Nothing -> failure
+
+prop_updatePodSpecSetsRebuilding :: Property
+prop_updatePodSpecSetsRebuilding = property $ do
+  spec <- forAll genPodSpec
+  newSpec <- forAll genPodSpec
+  let newSpecSameName = newSpec {podName = podName spec}
+  let (_, result) = run $ storeToPure Map.empty $ do
+        submitPod spec
+        updatePodSpec (podName spec) newSpecSameName
+        getPod (podName spec)
+  case result of
+    Just pod -> podState pod === Rebuilding
+    Nothing -> failure
+
+prop_updatePodSpecChangesFlakeRef :: Property
+prop_updatePodSpecChangesFlakeRef = property $ do
+  spec <- forAll genPodSpec
+  newSpec <- forAll genPodSpec
+  let newSpecSameName = newSpec {podName = podName spec}
+  let (_, result) = run $ storeToPure Map.empty $ do
+        submitPod spec
+        updatePodSpec (podName spec) newSpecSameName
+        getPod (podName spec)
+  case result of
+    Just pod -> podFlakeRef (podSpec pod) === podFlakeRef newSpecSameName
+    Nothing -> failure
+
+prop_setPodStateChangesState :: Property
+prop_setPodStateChangesState = property $ do
+  spec <- forAll genPodSpec
+  let (_, result) = run $ storeToPure Map.empty $ do
+        submitPod spec
+        setPodState (podName spec) Running
+        getPod (podName spec)
+  case result of
+    Just pod -> podState pod === Running
+    Nothing -> failure
+
+prop_assignPodNodeSetsNodeAndScheduled :: Property
+prop_assignPodNodeSetsNodeAndScheduled = property $ do
+  spec <- forAll genPodSpec
+  node <- forAll genNodeName
+  let (_, result) = run $ storeToPure Map.empty $ do
+        submitPod spec
+        assignPodNode (podName spec) node
+        getPod (podName spec)
+  case result of
+    Just pod -> do
+      podNode pod === Just node
+      podState pod === Scheduled
+    Nothing -> failure
+
+prop_updatePodSpecUnknownIsNoop :: Property
+prop_updatePodSpecUnknownIsNoop = property $ do
+  spec <- forAll genPodSpec
+  let (st, _) = run $ storeToPure Map.empty $ do
+        updatePodSpec (podName spec) spec
+  st === Map.empty

@@ -39,7 +39,7 @@ data PodSpec = PodSpec
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
-data PodState = Pending | Scheduled | Running | Failed
+data PodState = Pending | Scheduled | Running | Rebuilding | Failed
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
