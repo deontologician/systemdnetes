@@ -38,8 +38,7 @@ These are high level tasks that need to be implemented.
 ## Node Setup
 
 - [ ] Base NixOS configuration for nodes: enable nspawn, configure shared `/nix/store` bind mount, SSH access for orchestrator
-- [ ] Capsule support: configure nspawn containers as capsules for ephemeral cleanup semantics
-- [ ] Handle reboot recovery: orchestrator detects all capsules are gone after reboot and re-pushes
+- [ ] Handle reboot recovery: orchestrator detects containers are gone after reboot and re-pushes
 
 ## Networking (WireGuard)
 
