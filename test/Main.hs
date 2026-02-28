@@ -9,6 +9,7 @@ import Systemdnetes.Domain.PodSpec qualified as PodSpec
 import Systemdnetes.Domain.ReconcileSpec qualified as ReconcileSpec
 import Systemdnetes.Domain.ResourceSpec qualified as ResourceSpec
 import Systemdnetes.Domain.WireGuardSpec qualified as WireGuardSpec
+import Systemdnetes.Effects.DnsRegistrySpec qualified as DnsRegistrySpec
 import Systemdnetes.Effects.FileServerSpec qualified as FileServerSpec
 import Systemdnetes.Effects.IpAllocatorSpec qualified as IpAllocatorSpec
 import Systemdnetes.Effects.LogSpec qualified as LogSpec
@@ -33,6 +34,7 @@ main =
         PodSpec.tests,
         ResourceSpec.tests,
         WireGuardSpec.tests,
+        DnsRegistrySpec.tests,
         FileServerSpec.tests,
         IpAllocatorSpec.tests,
         LogSpec.tests,

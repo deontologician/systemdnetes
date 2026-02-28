@@ -49,6 +49,8 @@ library
     Systemdnetes.Domain.Reconcile
     Systemdnetes.Domain.Resource
     Systemdnetes.Domain.WireGuard
+    Systemdnetes.Effects.DnsRegistry
+    Systemdnetes.Effects.DnsRegistry.Interpreter
     Systemdnetes.Effects.FileServer
     Systemdnetes.Effects.FileServer.Interpreter
     Systemdnetes.Effects.IpAllocator
@@ -69,6 +71,8 @@ library
     , aeson
     , bytestring
     , containers
+    , directory
+    , filepath
     , http-types
     , process
     , stm
@@ -102,6 +106,7 @@ test-suite systemdnetes-test
     Systemdnetes.Domain.ReconcileSpec
     Systemdnetes.Domain.ResourceSpec
     Systemdnetes.Domain.WireGuardSpec
+    Systemdnetes.Effects.DnsRegistrySpec
     Systemdnetes.Effects.FileServerSpec
     Systemdnetes.Effects.IpAllocatorSpec
     Systemdnetes.Effects.LogSpec

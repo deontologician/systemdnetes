@@ -7,6 +7,8 @@ module Systemdnetes
     module Systemdnetes.Domain.Reconcile,
     module Systemdnetes.Domain.Resource,
     module Systemdnetes.Domain.WireGuard,
+    module Systemdnetes.Effects.DnsRegistry,
+    module Systemdnetes.Effects.DnsRegistry.Interpreter,
     module Systemdnetes.Effects.FileServer,
     module Systemdnetes.Effects.FileServer.Interpreter,
     module Systemdnetes.Effects.IpAllocator,
@@ -38,6 +40,8 @@ import Systemdnetes.Domain.Pod
 import Systemdnetes.Domain.Reconcile
 import Systemdnetes.Domain.Resource
 import Systemdnetes.Domain.WireGuard
+import Systemdnetes.Effects.DnsRegistry
+import Systemdnetes.Effects.DnsRegistry.Interpreter
 import Systemdnetes.Effects.FileServer
 import Systemdnetes.Effects.FileServer.Interpreter
 import Systemdnetes.Effects.IpAllocator
