@@ -7,6 +7,12 @@
   };
 
   outputs = { self, nixpkgs, flake-utils }:
+    {
+      nixosModules = {
+        orchestrator = import ./nix/modules/orchestrator.nix;
+      };
+    }
+    //
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
