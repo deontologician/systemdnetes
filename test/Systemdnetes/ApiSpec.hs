@@ -11,15 +11,11 @@ import Hedgehog.Range qualified as Range
 import Network.HTTP.Types (Status, status200, status201, status400, status404, status405)
 import Network.Wai (defaultRequest)
 import Network.Wai.Internal (Request (..), Response (..))
-import Polysemy
 import Systemdnetes.Api (handleRequest)
+import Systemdnetes.App (PureResult (..), defaultPureConfig, runAppPure)
+import Systemdnetes.App qualified as App
 import Systemdnetes.Domain.Node (Node (..), NodeName (..))
 import Systemdnetes.Domain.Pod (FlakeRef (..), PodName (..), PodSpec (..), ResourceRequests (..))
-import Systemdnetes.Effects.FileServer.Interpreter (fileServerToPure)
-import Systemdnetes.Effects.Log.Interpreter (logToList)
-import Systemdnetes.Effects.NodeStore.Interpreter (nodeStoreToPure)
-import Systemdnetes.Effects.Ssh.Interpreter (sshToPure)
-import Systemdnetes.Effects.Store.Interpreter (storeToPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Hedgehog (testPropertyNamed)
 
@@ -40,16 +36,13 @@ tests =
     ]
 
 -- | Run handleRequest through the full pure interpreter stack.
+-- Uses a minimal config with just the dashboard HTML file seeded.
 runPureApi :: LBS.ByteString -> Request -> Response
 runPureApi body req =
-  snd . snd . snd $
-    run $
-      fileServerToPure (Map.singleton "static/index.html" "<html>test</html>") $
-        sshToPure Map.empty $
-          nodeStoreToPure Map.empty $
-            storeToPure Map.empty $
-              logToList $
-                handleRequest body req
+  pureResultValue $
+    runAppPure
+      defaultPureConfig {App.pureFiles = Map.singleton "static/index.html" "<html>test</html>"}
+      (handleRequest body req)
 
 -- | Extract status from a WAI Response.
 responseStatus :: Response -> Status
@@ -79,56 +72,71 @@ genNode =
   (Node . NodeName <$> genText)
     <*> genText
 
+-- | The health endpoint should always succeed, giving load balancers and
+-- uptime monitors a reliable signal that the server is alive.
 prop_healthz :: Property
 prop_healthz = property $ do
   let resp = runPureApi "" (testRequest "GET" ["healthz"])
   responseStatus resp === status200
 
+-- | The root path serves the dashboard HTML. Verify it returns 200 so we
+-- know the file server wiring is correct and the index page is reachable.
 prop_dashboard :: Property
 prop_dashboard = property $ do
   let resp = runPureApi "" (testRequest "GET" [])
   responseStatus resp === status200
 
+-- | Any HTTP method/path combination not handled by the router should get
+-- a 405 Method Not Allowed, not a 404 or 500.
 prop_unknownRoute :: Property
 prop_unknownRoute = property $ do
   path <- forAll $ Gen.list (Range.linear 1 5) genText
   let resp = runPureApi "" (testRequest "PATCH" path)
   responseStatus resp === status405
 
+-- | Submitting a well-formed pod spec should succeed with 201 Created.
+-- The spec is randomly generated to ensure the endpoint accepts any valid shape.
 prop_postPodValid :: Property
 prop_postPodValid = property $ do
   spec <- forAll genPodSpec
   let resp = runPureApi (encode spec) (testRequest "POST" ["api", "v1", "pods"])
   responseStatus resp === status201
 
+-- | Submitting garbage instead of valid JSON should be rejected with 400.
 prop_postPodInvalid :: Property
 prop_postPodInvalid = property $ do
   let resp = runPureApi "not json" (testRequest "POST" ["api", "v1", "pods"])
   responseStatus resp === status400
 
+-- | Listing pods when the store is empty should still return 200 (with an
+-- empty list), not an error.
 prop_listPodsEmpty :: Property
 prop_listPodsEmpty = property $ do
   let resp = runPureApi "" (testRequest "GET" ["api", "v1", "pods"])
   responseStatus resp === status200
 
+-- | Getting a pod by name that doesn't exist should return 404.
 prop_getPodNotFound :: Property
 prop_getPodNotFound = property $ do
   name <- forAll genText
   let resp = runPureApi "" (testRequest "GET" ["api", "v1", "pods", name])
   responseStatus resp === status404
 
+-- | Deleting a pod that doesn't exist should return 404, not silently succeed.
 prop_deletePodNotFound :: Property
 prop_deletePodNotFound = property $ do
   name <- forAll genText
   let resp = runPureApi "" (testRequest "DELETE" ["api", "v1", "pods", name])
   responseStatus resp === status404
 
+-- | Registering a well-formed node should succeed with 201 Created.
 prop_postNodeValid :: Property
 prop_postNodeValid = property $ do
   node <- forAll genNode
   let resp = runPureApi (encode node) (testRequest "POST" ["api", "v1", "nodes"])
   responseStatus resp === status201
 
+-- | Listing nodes when the store is empty should return 200 with an empty list.
 prop_listNodesEmpty :: Property
 prop_listNodesEmpty = property $ do
   let resp = runPureApi "" (testRequest "GET" ["api", "v1", "nodes"])
