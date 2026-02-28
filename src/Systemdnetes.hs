@@ -1,5 +1,6 @@
 module Systemdnetes
   ( module Systemdnetes.Domain.Cluster,
+    module Systemdnetes.Domain.Network,
     module Systemdnetes.Domain.Node,
     module Systemdnetes.Domain.Pod,
     module Systemdnetes.Domain.Reconcile,
@@ -24,6 +25,7 @@ where
 import Systemdnetes.Api
 import Systemdnetes.App
 import Systemdnetes.Domain.Cluster
+import Systemdnetes.Domain.Network
 import Systemdnetes.Domain.Node
 import Systemdnetes.Domain.Pod
 import Systemdnetes.Domain.Reconcile

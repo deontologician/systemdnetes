@@ -42,6 +42,7 @@ library
     Systemdnetes.Api
     Systemdnetes.App
     Systemdnetes.Domain.Cluster
+    Systemdnetes.Domain.Network
     Systemdnetes.Domain.Node
     Systemdnetes.Domain.Pod
     Systemdnetes.Domain.Reconcile
@@ -88,6 +89,7 @@ test-suite systemdnetes-test
   other-modules:
     Systemdnetes.ApiSpec
     Systemdnetes.Domain.ClusterSpec
+    Systemdnetes.Domain.NetworkSpec
     Systemdnetes.Domain.NodeSpec
     Systemdnetes.Domain.PodSpec
     Systemdnetes.Domain.ReconcileSpec

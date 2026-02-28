@@ -2,6 +2,7 @@ module Main (main) where
 
 import Systemdnetes.ApiSpec qualified as ApiSpec
 import Systemdnetes.Domain.ClusterSpec qualified as ClusterSpec
+import Systemdnetes.Domain.NetworkSpec qualified as NetworkSpec
 import Systemdnetes.Domain.NodeSpec qualified as NodeSpec
 import Systemdnetes.Domain.PodSpec qualified as PodSpec
 import Systemdnetes.Domain.ReconcileSpec qualified as ReconcileSpec
@@ -22,6 +23,7 @@ main =
       "systemdnetes"
       [ ApiSpec.tests,
         ClusterSpec.tests,
+        NetworkSpec.tests,
         NodeSpec.tests,
         PodSpec.tests,
         ResourceSpec.tests,
