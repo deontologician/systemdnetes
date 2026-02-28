@@ -42,11 +42,13 @@ library
     Systemdnetes.Api
     Systemdnetes.App
     Systemdnetes.Domain.Cluster
+    Systemdnetes.Domain.Dns
     Systemdnetes.Domain.Network
     Systemdnetes.Domain.Node
     Systemdnetes.Domain.Pod
     Systemdnetes.Domain.Reconcile
     Systemdnetes.Domain.Resource
+    Systemdnetes.Domain.WireGuard
     Systemdnetes.Effects.FileServer
     Systemdnetes.Effects.FileServer.Interpreter
     Systemdnetes.Effects.Log
@@ -89,11 +91,13 @@ test-suite systemdnetes-test
   other-modules:
     Systemdnetes.ApiSpec
     Systemdnetes.Domain.ClusterSpec
+    Systemdnetes.Domain.DnsSpec
     Systemdnetes.Domain.NetworkSpec
     Systemdnetes.Domain.NodeSpec
     Systemdnetes.Domain.PodSpec
     Systemdnetes.Domain.ReconcileSpec
     Systemdnetes.Domain.ResourceSpec
+    Systemdnetes.Domain.WireGuardSpec
     Systemdnetes.Effects.FileServerSpec
     Systemdnetes.Effects.LogSpec
     Systemdnetes.Effects.NodeStoreSpec

@@ -1,10 +1,12 @@
 module Systemdnetes
   ( module Systemdnetes.Domain.Cluster,
+    module Systemdnetes.Domain.Dns,
     module Systemdnetes.Domain.Network,
     module Systemdnetes.Domain.Node,
     module Systemdnetes.Domain.Pod,
     module Systemdnetes.Domain.Reconcile,
     module Systemdnetes.Domain.Resource,
+    module Systemdnetes.Domain.WireGuard,
     module Systemdnetes.Effects.FileServer,
     module Systemdnetes.Effects.FileServer.Interpreter,
     module Systemdnetes.Effects.Log,
@@ -25,11 +27,13 @@ where
 import Systemdnetes.Api
 import Systemdnetes.App
 import Systemdnetes.Domain.Cluster
+import Systemdnetes.Domain.Dns
 import Systemdnetes.Domain.Network
 import Systemdnetes.Domain.Node
 import Systemdnetes.Domain.Pod
 import Systemdnetes.Domain.Reconcile
 import Systemdnetes.Domain.Resource
+import Systemdnetes.Domain.WireGuard
 import Systemdnetes.Effects.FileServer
 import Systemdnetes.Effects.FileServer.Interpreter
 import Systemdnetes.Effects.Log

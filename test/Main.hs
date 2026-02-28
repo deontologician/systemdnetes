@@ -2,11 +2,13 @@ module Main (main) where
 
 import Systemdnetes.ApiSpec qualified as ApiSpec
 import Systemdnetes.Domain.ClusterSpec qualified as ClusterSpec
+import Systemdnetes.Domain.DnsSpec qualified as DnsSpec
 import Systemdnetes.Domain.NetworkSpec qualified as NetworkSpec
 import Systemdnetes.Domain.NodeSpec qualified as NodeSpec
 import Systemdnetes.Domain.PodSpec qualified as PodSpec
 import Systemdnetes.Domain.ReconcileSpec qualified as ReconcileSpec
 import Systemdnetes.Domain.ResourceSpec qualified as ResourceSpec
+import Systemdnetes.Domain.WireGuardSpec qualified as WireGuardSpec
 import Systemdnetes.Effects.FileServerSpec qualified as FileServerSpec
 import Systemdnetes.Effects.LogSpec qualified as LogSpec
 import Systemdnetes.Effects.NodeStoreSpec qualified as NodeStoreSpec
@@ -23,10 +25,12 @@ main =
       "systemdnetes"
       [ ApiSpec.tests,
         ClusterSpec.tests,
+        DnsSpec.tests,
         NetworkSpec.tests,
         NodeSpec.tests,
         PodSpec.tests,
         ResourceSpec.tests,
+        WireGuardSpec.tests,
         FileServerSpec.tests,
         LogSpec.tests,
         NodeStoreSpec.tests,
