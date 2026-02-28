@@ -1,5 +1,7 @@
 module Systemdnetes.Api
   ( handleRequest,
+    defaultNodes,
+    defaultNodeCapacities,
   )
 where
 
@@ -18,16 +20,24 @@ import Network.HTTP.Types
   )
 import Network.Wai (Request, Response, pathInfo, requestMethod, responseLBS, strictRequestBody)
 import Polysemy
+import Systemdnetes.Domain.Cluster (NodeCapacity (..), buildClusterState)
 import Systemdnetes.Domain.Node (Node (..), NodeName (..))
 import Systemdnetes.Domain.Pod (PodName (..), PodSpec (..))
+import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Systemdnetes.Effects.Log (Log, logInfo)
 import Systemdnetes.Effects.Store (Store, deletePod, getPod, listPods, submitPod)
 
--- | Static node list for the PoC. Will be replaced by config/discovery later.
-defaultNodes :: [Node]
-defaultNodes =
-  [ Node {nodeName = NodeName "node-1", nodeAddress = "192.168.1.10"}
+-- | Static node capacities for the PoC. Will be replaced by config/discovery.
+defaultNodeCapacities :: [(Node, NodeCapacity)]
+defaultNodeCapacities =
+  [ (Node (NodeName "node-1") "192.168.1.10", NodeCapacity (Millicores 2000) (Mebibytes 2048)),
+    (Node (NodeName "node-2") "192.168.1.11", NodeCapacity (Millicores 4000) (Mebibytes 4096)),
+    (Node (NodeName "node-3") "192.168.1.12", NodeCapacity (Millicores 1000) (Mebibytes 1024))
   ]
+
+-- | Static node list derived from capacities.
+defaultNodes :: [Node]
+defaultNodes = map fst defaultNodeCapacities
 
 handleRequest ::
   (Member Log r, Member Store r, Member (Embed IO) r) =>
@@ -37,8 +47,17 @@ handleRequest req = do
   body <- embed $ strictRequestBody req
   route (requestMethod req) (pathInfo req) body
   where
+    route "GET" [] _ = do
+      logInfo "GET /"
+      html <- embed $ LBS.readFile "static/index.html"
+      pure $ responseLBS status200 [(hContentType, "text/html")] html
     route "GET" ["healthz"] _ =
       pure $ textResponse status200 "ok\n"
+    route "GET" ["api", "v1", "cluster"] _ = do
+      logInfo "GET /api/v1/cluster"
+      pods <- listPods
+      let cs = buildClusterState defaultNodeCapacities pods
+      pure $ jsonResponse status200 cs
     route "GET" ["api", "v1", "nodes"] _ = do
       logInfo "GET /api/v1/nodes"
       pure $ jsonResponse status200 defaultNodes
