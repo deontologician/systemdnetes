@@ -10,6 +10,7 @@
     {
       nixosModules = {
         orchestrator = import ./nix/modules/orchestrator.nix;
+        worker = import ./nix/modules/worker.nix;
       };
     }
     //
