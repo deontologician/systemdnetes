@@ -41,6 +41,7 @@ library
     Systemdnetes
     Systemdnetes.Api
     Systemdnetes.App
+    Systemdnetes.Domain.Cluster
     Systemdnetes.Domain.Node
     Systemdnetes.Domain.Pod
     Systemdnetes.Domain.Resource
