@@ -44,6 +44,8 @@ library
     Systemdnetes.Domain.Pod
     Systemdnetes.Effects.Log
     Systemdnetes.Effects.Log.Interpreter
+    Systemdnetes.Effects.Systemd
+    Systemdnetes.Effects.Systemd.Interpreter
   build-depends:
     , aeson
     , containers
