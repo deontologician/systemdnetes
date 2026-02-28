@@ -46,6 +46,8 @@ library
     Systemdnetes.Domain.Pod
     Systemdnetes.Domain.Reconcile
     Systemdnetes.Domain.Resource
+    Systemdnetes.Effects.FileServer
+    Systemdnetes.Effects.FileServer.Interpreter
     Systemdnetes.Effects.Log
     Systemdnetes.Effects.Log.Interpreter
     Systemdnetes.Effects.NodeStore
@@ -84,9 +86,13 @@ test-suite systemdnetes-test
   hs-source-dirs:  test
   main-is:         Main.hs
   other-modules:
+    Systemdnetes.ApiSpec
     Systemdnetes.Domain.ClusterSpec
+    Systemdnetes.Domain.NodeSpec
+    Systemdnetes.Domain.PodSpec
     Systemdnetes.Domain.ReconcileSpec
     Systemdnetes.Domain.ResourceSpec
+    Systemdnetes.Effects.FileServerSpec
     Systemdnetes.Effects.LogSpec
     Systemdnetes.Effects.NodeStoreSpec
     Systemdnetes.Effects.SshSpec
@@ -94,9 +100,13 @@ test-suite systemdnetes-test
     Systemdnetes.Effects.SystemdSpec
     Systemdnetes.Effects.UpdateChainSpec
   build-depends:
+    , aeson
+    , bytestring
     , containers
     , hedgehog
+    , http-types
     , systemdnetes
     , tasty
     , tasty-hedgehog
     , text
+    , wai
