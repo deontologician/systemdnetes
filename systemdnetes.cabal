@@ -82,6 +82,8 @@ test-suite systemdnetes-test
   main-is:         Main.hs
   other-modules:
     Systemdnetes.Effects.LogSpec
+    Systemdnetes.Effects.NodeStoreSpec
+    Systemdnetes.Effects.SshSpec
     Systemdnetes.Effects.StoreSpec
     Systemdnetes.Effects.SystemdSpec
   build-depends:
