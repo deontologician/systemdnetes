@@ -44,6 +44,7 @@ library
     Systemdnetes.Domain.Cluster
     Systemdnetes.Domain.Node
     Systemdnetes.Domain.Pod
+    Systemdnetes.Domain.Reconcile
     Systemdnetes.Domain.Resource
     Systemdnetes.Effects.Log
     Systemdnetes.Effects.Log.Interpreter
@@ -84,6 +85,7 @@ test-suite systemdnetes-test
   main-is:         Main.hs
   other-modules:
     Systemdnetes.Domain.ClusterSpec
+    Systemdnetes.Domain.ReconcileSpec
     Systemdnetes.Domain.ResourceSpec
     Systemdnetes.Effects.LogSpec
     Systemdnetes.Effects.NodeStoreSpec

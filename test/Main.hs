@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Systemdnetes.Domain.ClusterSpec qualified as ClusterSpec
+import Systemdnetes.Domain.ReconcileSpec qualified as ReconcileSpec
 import Systemdnetes.Domain.ResourceSpec qualified as ResourceSpec
 import Systemdnetes.Effects.LogSpec qualified as LogSpec
 import Systemdnetes.Effects.NodeStoreSpec qualified as NodeStoreSpec
@@ -20,5 +21,6 @@ main =
         NodeStoreSpec.tests,
         SshSpec.tests,
         StoreSpec.tests,
-        SystemdSpec.tests
+        SystemdSpec.tests,
+        ReconcileSpec.tests
       ]
