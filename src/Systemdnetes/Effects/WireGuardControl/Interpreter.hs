@@ -1,5 +1,6 @@
 module Systemdnetes.Effects.WireGuardControl.Interpreter
-  ( wireGuardControlToPure,
+  ( WgPureState,
+    wireGuardControlToPure,
     wireGuardControlToIO,
   )
 where

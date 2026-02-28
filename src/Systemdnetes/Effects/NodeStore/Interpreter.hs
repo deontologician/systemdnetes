@@ -1,5 +1,6 @@
 module Systemdnetes.Effects.NodeStore.Interpreter
-  ( nodeStoreToPure,
+  ( NodeStoreState,
+    nodeStoreToPure,
     nodeStoreToIO,
   )
 where

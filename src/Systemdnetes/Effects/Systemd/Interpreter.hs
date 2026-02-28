@@ -1,5 +1,6 @@
 module Systemdnetes.Effects.Systemd.Interpreter
-  ( systemdToPure,
+  ( SystemdState,
+    systemdToPure,
     systemdToIO,
   )
 where
