@@ -24,7 +24,7 @@ genText :: Gen Text
 genText = Gen.text (Range.linear 1 50) Gen.alphaNum
 
 genNode :: Gen Node
-genNode = Node <$> (NodeName <$> genText) <*> genText
+genNode = (Node . NodeName <$> genText) <*> genText
 
 prop_knownNode :: Property
 prop_knownNode = property $ do

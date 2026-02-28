@@ -5,7 +5,7 @@ where
 
 import Data.Aeson (ToJSON, eitherDecode, encode)
 import Data.ByteString.Lazy qualified as LBS
-import Data.Text (Text, pack)
+import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
 import Network.HTTP.Types
   ( Status,
@@ -18,19 +18,15 @@ import Network.HTTP.Types
   )
 import Network.Wai (Request, Response, pathInfo, requestMethod, responseLBS, strictRequestBody)
 import Polysemy
-import Systemdnetes.Domain.Node (Node (..), NodeName (..))
+import Systemdnetes.Domain.Node (HealthStatus (..), Node (..), NodeName (..), NodeStatus (..))
 import Systemdnetes.Domain.Pod (PodName (..), PodSpec (..))
 import Systemdnetes.Effects.Log (Log, logInfo)
+import Systemdnetes.Effects.NodeStore (NodeStore, getNode, listNodes, registerNode, removeNode)
+import Systemdnetes.Effects.Ssh (Ssh, runSshCommand)
 import Systemdnetes.Effects.Store (Store, deletePod, getPod, listPods, submitPod)
 
--- | Static node list for the PoC. Will be replaced by config/discovery later.
-defaultNodes :: [Node]
-defaultNodes =
-  [ Node {nodeName = NodeName "node-1", nodeAddress = "192.168.1.10"}
-  ]
-
 handleRequest ::
-  (Member Log r, Member Store r, Member (Embed IO) r) =>
+  (Member Log r, Member Store r, Member NodeStore r, Member Ssh r, Member (Embed IO) r) =>
   Request ->
   Sem r Response
 handleRequest req = do
@@ -39,13 +35,34 @@ handleRequest req = do
   where
     route "GET" ["healthz"] _ =
       pure $ textResponse status200 "ok\n"
+    route "POST" ["api", "v1", "nodes"] body = do
+      logInfo "POST /api/v1/nodes"
+      case eitherDecode body of
+        Left err ->
+          pure $ textResponse status400 $ LBS.fromStrict $ encodeUtf8 $ "bad request: " <> pack err <> "\n"
+        Right node -> do
+          registerNode node
+          pure $ jsonResponse status201 node
     route "GET" ["api", "v1", "nodes"] _ = do
       logInfo "GET /api/v1/nodes"
-      pure $ jsonResponse status200 defaultNodes
+      nodes <- listNodes
+      statuses <- traverse checkNodeHealth nodes
+      pure $ jsonResponse status200 statuses
     route "GET" ["api", "v1", "nodes", name] _ = do
       logInfo $ "GET /api/v1/nodes/" <> name
-      case findNode name of
-        Just node -> pure $ jsonResponse status200 node
+      result <- getNode (NodeName name)
+      case result of
+        Just node -> do
+          status <- checkNodeHealth node
+          pure $ jsonResponse status200 status
+        Nothing -> pure $ textResponse status404 "node not found\n"
+    route "DELETE" ["api", "v1", "nodes", name] _ = do
+      logInfo $ "DELETE /api/v1/nodes/" <> name
+      result <- getNode (NodeName name)
+      case result of
+        Just _ -> do
+          removeNode (NodeName name)
+          pure $ textResponse status200 "deleted\n"
         Nothing -> pure $ textResponse status404 "node not found\n"
     route "POST" ["api", "v1", "pods"] body = do
       logInfo "POST /api/v1/pods"
@@ -78,10 +95,12 @@ handleRequest req = do
     route _ _ _ =
       pure $ textResponse status405 "method not allowed\n"
 
-findNode :: Text -> Maybe Node
-findNode name = case filter (\n -> nodeName n == NodeName name) defaultNodes of
-  [node] -> Just node
-  _ -> Nothing
+checkNodeHealth :: (Member Ssh r) => Node -> Sem r NodeStatus
+checkNodeHealth node = do
+  result <- runSshCommand node "systemdnetes-health"
+  pure $ case result of
+    Right output -> NodeStatus (nodeName node) (nodeAddress node) Healthy (Just output)
+    Left err -> NodeStatus (nodeName node) (nodeAddress node) Unhealthy (Just err)
 
 jsonResponse :: (ToJSON a) => Status -> a -> Response
 jsonResponse status val =

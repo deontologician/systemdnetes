@@ -7,8 +7,9 @@ import Systemdnetes
 
 main :: IO ()
 main = do
-  store <- newTVarIO Map.empty
-  runApp store $ logInfo "Starting systemdnetes on :8080"
+  podStore <- newTVarIO Map.empty
+  nodeStore <- newTVarIO Map.empty
+  runApp podStore nodeStore $ logInfo "Starting systemdnetes on :8080"
   run 8080 $ \req respond -> do
-    response <- runApp store (handleRequest req)
+    response <- runApp podStore nodeStore (handleRequest req)
     respond response
