@@ -26,20 +26,17 @@ genText = Gen.text (Range.linear 1 20) Gen.alphaNum
 
 genNode :: Gen Node
 genNode =
-  Node
-    <$> (NodeName <$> genText)
+  (Node . NodeName <$> genText)
     <*> genText
 
 genCapacity :: Gen NodeCapacity
 genCapacity =
-  NodeCapacity
-    <$> (Millicores <$> Gen.int (Range.linear 1000 8000))
+  (NodeCapacity . Millicores <$> Gen.int (Range.linear 1000 8000))
     <*> (Mebibytes <$> Gen.int (Range.linear 512 8192))
 
 genPodSpec :: Gen PodSpec
 genPodSpec =
-  PodSpec
-    <$> (PodName <$> genText)
+  (PodSpec . PodName <$> genText)
     <*> (FlakeRef <$> genText)
     <*> (ResourceRequests <$> Gen.element ["100m", "500m", "1000m"] <*> Gen.element ["128Mi", "256Mi", "512Mi"])
     <*> Gen.int (Range.linear 1 5)

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>systemdnetes cluster</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f0f23;
+    color: #e0e0e0;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  header h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: #7fdbca;
+    letter-spacing: 2px;
+  }
+  header .subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+  }
+
+  .overview {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .overview-card {
+    background: #1a1a2e;
+    border: 1px solid #2a2a4e;
+    border-radius: 8px;
+    padding: 16px 24px;
+    min-width: 200px;
+    text-align: center;
+  }
+  .overview-card .label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .overview-card .value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #c3e88d;
+  }
+  .bar-container {
+    width: 100%;
+    height: 8px;
+    background: #2a2a4e;
+    border-radius: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 750ms ease, background-color 750ms ease;
+  }
+
+  .nodes-section {
+    margin-bottom: 32px;
+  }
+  .nodes-section h2 {
+    font-size: 16px;
+    color: #82aaff;
+    margin-bottom: 16px;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  .nodes-grid {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .node-card {
+    background: #1a1a2e;
+    border: 1px solid #2a2a4e;
+    border-radius: 8px;
+    padding: 20px;
+    width: 320px;
+    transition: border-color 300ms ease;
+  }
+  .node-card:hover {
+    border-color: #82aaff;
+  }
+  .node-card .node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .node-card .node-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #c792ea;
+  }
+  .node-card .node-addr {
+    font-size: 11px;
+    color: #666;
+  }
+  .node-card .resource-row {
+    margin-bottom: 8px;
+  }
+  .node-card .resource-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 3px;
+  }
+  .node-card .pods-area {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 28px;
+  }
+
+  .pod-tile {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 400ms ease, transform 400ms ease, background-color 400ms ease;
+  }
+  .pod-tile.entering {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+
+  .pod-state-Running  { background: #1b3a2a; color: #c3e88d; border: 1px solid #2d5a3a; }
+  .pod-state-Pending  { background: #3a3520; color: #ffcb6b; border: 1px solid #5a5530; }
+  .pod-state-Scheduled { background: #1a2a4e; color: #82aaff; border: 1px solid #2a3a6e; }
+  .pod-state-Failed   { background: #3a1a1a; color: #ff5370; border: 1px solid #5a2a2a; }
+
+  .unscheduled-section {
+    text-align: center;
+  }
+  .unscheduled-section h2 {
+    font-size: 16px;
+    color: #ffcb6b;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+  .unscheduled-pods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    min-height: 28px;
+  }
+  .empty-msg {
+    font-size: 12px;
+    color: #444;
+    font-style: italic;
+  }
+
+  .connection-svg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .conn-line {
+    stroke: #2a2a4e;
+    stroke-width: 1;
+    stroke-dasharray: 6 4;
+    fill: none;
+  }
+
+  .error-banner {
+    text-align: center;
+    padding: 8px;
+    color: #ff5370;
+    font-size: 12px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<svg class="connection-svg" id="connections"></svg>
+
+<header>
+  <h1>systemdnetes</h1>
+  <div class="subtitle">cluster dashboard</div>
+</header>
+
+<div class="error-banner" id="error-banner"></div>
+
+<div class="overview" id="overview"></div>
+
+<div class="nodes-section">
+  <h2>worker nodes</h2>
+  <div class="nodes-grid" id="nodes-grid"></div>
+</div>
+
+<div class="unscheduled-section" id="unscheduled-section">
+  <h2>unscheduled pods</h2>
+  <div class="unscheduled-pods" id="unscheduled-pods"></div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  const REFRESH_MS = 3000;
+  const TRANSITION_MS = 750;
+
+  function utilizationColor(ratio) {
+    if (ratio < 0.5) return d3.interpolateRgb('#c3e88d', '#ffcb6b')(ratio * 2);
+    return d3.interpolateRgb('#ffcb6b', '#ff5370')((ratio - 0.5) * 2);
+  }
+
+  function formatCpu(mc) { return mc >= 1000 ? (mc / 1000).toFixed(1) + ' cores' : mc + 'm'; }
+  function formatMem(mb) { return mb >= 1024 ? (mb / 1024).toFixed(1) + ' Gi' : mb + ' Mi'; }
+
+  function renderOverview(data) {
+    const overview = d3.select('#overview');
+    const cards = [
+      { label: 'Nodes', value: data.csNodes.length },
+      { label: 'Total Pods', value: data.csNodes.reduce((s, n) => s + n.nvPods.length, 0) + data.csUnscheduledPods.length },
+      { label: 'CPU', value: formatCpu(data.csUsedCpu) + ' / ' + formatCpu(data.csTotalCpu), ratio: data.csTotalCpu > 0 ? data.csUsedCpu / data.csTotalCpu : 0 },
+      { label: 'Memory', value: formatMem(data.csUsedMemory) + ' / ' + formatMem(data.csTotalMemory), ratio: data.csTotalMemory > 0 ? data.csUsedMemory / data.csTotalMemory : 0 },
+    ];
+
+    const sel = overview.selectAll('.overview-card').data(cards, d => d.label);
+
+    const enter = sel.enter().append('div').attr('class', 'overview-card');
+    enter.append('div').attr('class', 'label');
+    enter.append('div').attr('class', 'value');
+    const barEnter = enter.append('div').attr('class', 'bar-container').style('display', d => d.ratio !== undefined ? null : 'none');
+    barEnter.append('div').attr('class', 'bar-fill');
+
+    const merged = enter.merge(sel);
+    merged.select('.label').text(d => d.label);
+    merged.select('.value').text(d => d.value);
+    merged.select('.bar-fill')
+      .transition().duration(TRANSITION_MS)
+      .style('width', d => d.ratio !== undefined ? (d.ratio * 100) + '%' : '0%')
+      .style('background-color', d => d.ratio !== undefined ? utilizationColor(d.ratio) : '#555');
+  }
+
+  function renderNodes(data) {
+    const grid = d3.select('#nodes-grid');
+    const nodeSel = grid.selectAll('.node-card').data(data.csNodes, d => d.nvNode.nodeName);
+
+    const enter = nodeSel.enter().append('div').attr('class', 'node-card');
+
+    // Header
+    const header = enter.append('div').attr('class', 'node-header');
+    header.append('span').attr('class', 'node-name');
+    header.append('span').attr('class', 'node-addr');
+
+    // CPU bar
+    const cpuRow = enter.append('div').attr('class', 'resource-row');
+    cpuRow.append('div').attr('class', 'resource-label')
+      .html('<span>CPU</span><span class="cpu-text"></span>');
+    const cpuBar = cpuRow.append('div').attr('class', 'bar-container');
+    cpuBar.append('div').attr('class', 'bar-fill cpu-bar');
+
+    // Memory bar
+    const memRow = enter.append('div').attr('class', 'resource-row');
+    memRow.append('div').attr('class', 'resource-label')
+      .html('<span>Memory</span><span class="mem-text"></span>');
+    const memBar = memRow.append('div').attr('class', 'bar-container');
+    memBar.append('div').attr('class', 'bar-fill mem-bar');
+
+    // Pods area
+    enter.append('div').attr('class', 'pods-area');
+
+    const merged = enter.merge(nodeSel);
+
+    merged.select('.node-name').text(d => d.nvNode.nodeName);
+    merged.select('.node-addr').text(d => d.nvNode.nodeAddress);
+
+    merged.each(function(d) {
+      const card = d3.select(this);
+      const cpuRatio = d.nvCapacity.capacityCpu > 0 ? d.nvUsage.capacityCpu / d.nvCapacity.capacityCpu : 0;
+      const memRatio = d.nvCapacity.capacityMemory > 0 ? d.nvUsage.capacityMemory / d.nvCapacity.capacityMemory : 0;
+
+      card.select('.cpu-text').text(formatCpu(d.nvUsage.capacityCpu) + ' / ' + formatCpu(d.nvCapacity.capacityCpu));
+      card.select('.cpu-bar')
+        .transition().duration(TRANSITION_MS)
+        .style('width', (cpuRatio * 100) + '%')
+        .style('background-color', utilizationColor(cpuRatio));
+
+      card.select('.mem-text').text(formatMem(d.nvUsage.capacityMemory) + ' / ' + formatMem(d.nvCapacity.capacityMemory));
+      card.select('.mem-bar')
+        .transition().duration(TRANSITION_MS)
+        .style('width', (memRatio * 100) + '%')
+        .style('background-color', utilizationColor(memRatio));
+
+      // Pod tiles
+      const podSel = card.select('.pods-area').selectAll('.pod-tile').data(d.nvPods, p => p.pvName);
+
+      podSel.exit()
+        .transition().duration(400)
+        .style('opacity', 0).style('transform', 'scale(0.5)')
+        .remove();
+
+      const podEnter = podSel.enter().append('div')
+        .attr('class', p => 'pod-tile entering pod-state-' + p.pvState)
+        .text(p => p.pvName);
+
+      // Trigger enter animation
+      requestAnimationFrame(() => {
+        podEnter.classed('entering', false);
+      });
+
+      podSel.merge(podEnter)
+        .attr('class', p => 'pod-tile pod-state-' + p.pvState)
+        .text(p => p.pvName);
+    });
+
+    nodeSel.exit().transition().duration(400).style('opacity', 0).remove();
+  }
+
+  function renderUnscheduled(data) {
+    const container = d3.select('#unscheduled-pods');
+    const pods = data.csUnscheduledPods;
+
+    if (pods.length === 0) {
+      container.selectAll('.pod-tile').transition().duration(400).style('opacity', 0).remove();
+      if (container.select('.empty-msg').empty()) {
+        container.append('div').attr('class', 'empty-msg').text('no unscheduled pods');
+      }
+      return;
+    }
+
+    container.select('.empty-msg').remove();
+
+    const sel = container.selectAll('.pod-tile').data(pods, p => p.pvName);
+
+    sel.exit()
+      .transition().duration(400)
+      .style('opacity', 0).style('transform', 'scale(0.5)')
+      .remove();
+
+    const enter = sel.enter().append('div')
+      .attr('class', p => 'pod-tile entering pod-state-' + p.pvState)
+      .text(p => p.pvName);
+
+    requestAnimationFrame(() => {
+      enter.classed('entering', false);
+    });
+
+    sel.merge(enter)
+      .attr('class', p => 'pod-tile pod-state-' + p.pvState)
+      .text(p => p.pvName);
+  }
+
+  function renderConnections() {
+    const svg = d3.select('#connections');
+    const header = document.querySelector('header');
+    const nodeCards = document.querySelectorAll('.node-card');
+    if (!header || nodeCards.length === 0) return;
+
+    const hRect = header.getBoundingClientRect();
+    const fromX = hRect.left + hRect.width / 2;
+    const fromY = hRect.bottom + 8;
+
+    const lines = Array.from(nodeCards).map(card => {
+      const r = card.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top - 4 };
+    });
+
+    const lineSel = svg.selectAll('.conn-line').data(lines);
+
+    lineSel.enter().append('line').attr('class', 'conn-line')
+      .merge(lineSel)
+      .attr('x1', fromX).attr('y1', fromY)
+      .attr('x2', d => d.x).attr('y2', d => d.y);
+
+    lineSel.exit().remove();
+
+    // Animate dash offset
+    svg.selectAll('.conn-line')
+      .attr('stroke-dashoffset', function() {
+        const current = parseFloat(d3.select(this).attr('stroke-dashoffset') || 0);
+        return current - 1;
+      });
+  }
+
+  let animFrame;
+  function animateConnections() {
+    renderConnections();
+    animFrame = requestAnimationFrame(animateConnections);
+  }
+
+  function showError(msg) {
+    const banner = document.getElementById('error-banner');
+    banner.textContent = msg;
+    banner.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('error-banner').style.display = 'none';
+  }
+
+  async function fetchAndRender() {
+    try {
+      const resp = await fetch('/api/v1/cluster');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      hideError();
+      renderOverview(data);
+      renderNodes(data);
+      renderUnscheduled(data);
+    } catch (e) {
+      showError('Failed to fetch cluster state: ' + e.message);
+    }
+  }
+
+  // Initial render + polling
+  fetchAndRender();
+  setInterval(fetchAndRender, REFRESH_MS);
+  animateConnections();
+
+  // Re-render connections on resize
+  window.addEventListener('resize', renderConnections);
+})();
+</script>
+</body>
+</html>

@@ -23,6 +23,10 @@
           };
         };
         systemdnetes = haskellPackages.systemdnetes;
+        staticFiles = pkgs.runCommand "systemdnetes-static" { } ''
+          mkdir -p $out/static
+          cp ${./static}/* $out/static/
+        '';
       in
       {
         packages = {
@@ -30,8 +34,10 @@
           container = pkgs.dockerTools.buildImage {
             name = "systemdnetes";
             tag = "latest";
+            copyToRoot = [ staticFiles ];
             config = {
               Cmd = [ "${pkgs.lib.getBin systemdnetes}/bin/systemdnetes" ];
+              WorkingDir = "/";
               ExposedPorts = { "8080/tcp" = { }; };
             };
           };
