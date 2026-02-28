@@ -85,17 +85,25 @@ test-suite systemdnetes-test
   hs-source-dirs:  test
   main-is:         Main.hs
   other-modules:
+    Systemdnetes.ApiSpec
     Systemdnetes.Domain.ClusterSpec
+    Systemdnetes.Domain.NodeSpec
+    Systemdnetes.Domain.PodSpec
     Systemdnetes.Domain.ResourceSpec
+    Systemdnetes.Effects.FileServerSpec
     Systemdnetes.Effects.LogSpec
     Systemdnetes.Effects.NodeStoreSpec
     Systemdnetes.Effects.SshSpec
     Systemdnetes.Effects.StoreSpec
     Systemdnetes.Effects.SystemdSpec
   build-depends:
+    , aeson
+    , bytestring
     , containers
     , hedgehog
+    , http-types
     , systemdnetes
     , tasty
     , tasty-hedgehog
     , text
+    , wai

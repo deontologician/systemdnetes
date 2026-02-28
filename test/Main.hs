@@ -1,7 +1,11 @@
 module Main (main) where
 
+import Systemdnetes.ApiSpec qualified as ApiSpec
 import Systemdnetes.Domain.ClusterSpec qualified as ClusterSpec
+import Systemdnetes.Domain.NodeSpec qualified as NodeSpec
+import Systemdnetes.Domain.PodSpec qualified as PodSpec
 import Systemdnetes.Domain.ResourceSpec qualified as ResourceSpec
+import Systemdnetes.Effects.FileServerSpec qualified as FileServerSpec
 import Systemdnetes.Effects.LogSpec qualified as LogSpec
 import Systemdnetes.Effects.NodeStoreSpec qualified as NodeStoreSpec
 import Systemdnetes.Effects.SshSpec qualified as SshSpec
@@ -14,8 +18,12 @@ main =
   defaultMain $
     testGroup
       "systemdnetes"
-      [ ClusterSpec.tests,
+      [ ApiSpec.tests,
+        ClusterSpec.tests,
+        NodeSpec.tests,
+        PodSpec.tests,
         ResourceSpec.tests,
+        FileServerSpec.tests,
         LogSpec.tests,
         NodeStoreSpec.tests,
         SshSpec.tests,
