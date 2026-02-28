@@ -55,3 +55,16 @@ executable systemdnetes
     , wai
     , warp
 
+test-suite systemdnetes-test
+  import:          shared
+  type:            exitcode-stdio-1.0
+  hs-source-dirs:  test
+  main-is:         Main.hs
+  other-modules:
+    Systemdnetes.Effects.LogSpec
+  build-depends:
+    , hedgehog
+    , systemdnetes
+    , tasty
+    , tasty-hedgehog
+    , text
