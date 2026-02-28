@@ -92,6 +92,7 @@ test-suite systemdnetes-test
     Systemdnetes.Effects.SshSpec
     Systemdnetes.Effects.StoreSpec
     Systemdnetes.Effects.SystemdSpec
+    Systemdnetes.Effects.UpdateChainSpec
   build-depends:
     , containers
     , hedgehog

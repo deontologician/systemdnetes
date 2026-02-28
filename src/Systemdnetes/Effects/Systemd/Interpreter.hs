@@ -52,4 +52,4 @@ systemdToIO = interpret $ \case
   GetContainer _ _ -> pure Nothing
   StartContainer _ _ -> pure ()
   StopContainer _ _ -> pure ()
-  RebuildContainer _ _ _ -> pure ()
+  RebuildContainer {} -> pure ()
