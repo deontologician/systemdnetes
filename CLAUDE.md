@@ -70,3 +70,6 @@ Write descriptive commit messages: summary line says *what*, body says *why* and
 ## Deployment
 
 Fly Machines via Nix-built OCI image. See `deploy/CLAUDE.md`.
+
+## CLAUDE doc structure
+Add a CLAUDE.md in each directory explaining at a high level what the files contain to help with navigation. Additionally, if there are operational instructions necessary in that directory (like a tool or cli invocations needed) explain them there with examples.
