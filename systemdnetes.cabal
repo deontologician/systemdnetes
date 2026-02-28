@@ -44,3 +44,14 @@ library
     , text
     , time
 
+executable systemdnetes
+  import:          shared
+  hs-source-dirs:  app
+  main-is:         Main.hs
+  build-depends:
+    , bytestring
+    , http-types
+    , systemdnetes
+    , wai
+    , warp
+
