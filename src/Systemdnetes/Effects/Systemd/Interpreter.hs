@@ -37,6 +37,11 @@ systemdToPure initial =
           StopContainer node pod -> do
             modify' @SystemdState $
               Map.adjust (Map.insert pod ContainerStopped) node
+          RebuildContainer node pod _flakeRef -> do
+            modify' @SystemdState $
+              Map.alter
+                (Just . maybe (Map.singleton pod ContainerRunning) (Map.insert pod ContainerRunning))
+                node
       )
 
 -- | Stubbed IO interpreter. Returns empty results / no-ops.
@@ -47,3 +52,4 @@ systemdToIO = interpret $ \case
   GetContainer _ _ -> pure Nothing
   StartContainer _ _ -> pure ()
   StopContainer _ _ -> pure ()
+  RebuildContainer _ _ _ -> pure ()

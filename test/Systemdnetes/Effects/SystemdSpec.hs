@@ -7,7 +7,7 @@ import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Polysemy
 import Systemdnetes.Domain.Node (NodeName (..))
-import Systemdnetes.Domain.Pod (ContainerState (..), PodName (..))
+import Systemdnetes.Domain.Pod (ContainerState (..), FlakeRef (..), PodName (..))
 import Systemdnetes.Effects.Systemd
 import Systemdnetes.Effects.Systemd.Interpreter
 import Test.Tasty (TestTree, testGroup)
@@ -21,7 +21,9 @@ tests =
       testPropertyNamed "startContainer then getContainer returns Running" "prop_startGet" prop_startGet,
       testPropertyNamed "stopContainer then getContainer returns Stopped" "prop_stopGet" prop_stopGet,
       testPropertyNamed "startContainer then listContainers includes it" "prop_startList" prop_startList,
-      testPropertyNamed "getContainer on unknown pod returns Nothing" "prop_getUnknown" prop_getUnknown
+      testPropertyNamed "getContainer on unknown pod returns Nothing" "prop_getUnknown" prop_getUnknown,
+      testPropertyNamed "rebuildContainer sets container to Running" "prop_rebuildContainerSetsRunning" prop_rebuildContainerSetsRunning,
+      testPropertyNamed "rebuildContainer on empty creates container" "prop_rebuildContainerOnEmptyCreatesContainer" prop_rebuildContainerOnEmptyCreatesContainer
     ]
 
 genNodeName :: Gen NodeName
@@ -73,3 +75,28 @@ prop_getUnknown = property $ do
   pod <- forAll genPodName
   let (_, result) = run $ systemdToPure Map.empty (getContainer node pod)
   result === Nothing
+
+genFlakeRef :: Gen FlakeRef
+genFlakeRef = FlakeRef <$> genText
+
+prop_rebuildContainerSetsRunning :: Property
+prop_rebuildContainerSetsRunning = property $ do
+  node <- forAll genNodeName
+  pod <- forAll genPodName
+  flake <- forAll genFlakeRef
+  let (_, result) = run $ systemdToPure Map.empty $ do
+        startContainer node pod
+        stopContainer node pod
+        rebuildContainer node pod flake
+        getContainer node pod
+  result === Just ContainerRunning
+
+prop_rebuildContainerOnEmptyCreatesContainer :: Property
+prop_rebuildContainerOnEmptyCreatesContainer = property $ do
+  node <- forAll genNodeName
+  pod <- forAll genPodName
+  flake <- forAll genFlakeRef
+  let (_, result) = run $ systemdToPure Map.empty $ do
+        rebuildContainer node pod flake
+        getContainer node pod
+  result === Just ContainerRunning
