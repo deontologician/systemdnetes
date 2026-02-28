@@ -32,7 +32,9 @@
           mkdir -p $out/etc
           echo 'root:x:0:0:root:/root:/bin/bash' > $out/etc/passwd
           echo 'root:x:0:' > $out/etc/group
+          echo 'sshd:x:22:22:sshd privsep:/var/empty:/bin/false' >> $out/etc/passwd
           echo 'nobody:x:65534:65534:nobody:/nonexistent:/bin/false' >> $out/etc/passwd
+          echo 'sshd:x:22:' >> $out/etc/group
           echo 'nogroup:x:65534:' >> $out/etc/group
         '';
       in
@@ -106,6 +108,7 @@
                 Entrypoint = [
                   "${pkgs.bash}/bin/bash" "-c" ''
                     set -euo pipefail
+                    mkdir -p /var/empty
                     mkdir -p /root/.ssh && chmod 700 /root/.ssh
                     if [ -n "''${SSH_AUTHORIZED_KEYS:-}" ]; then
                       printf '%s\n' "$SSH_AUTHORIZED_KEYS" > /root/.ssh/authorized_keys
