@@ -3,6 +3,8 @@ module Systemdnetes
     module Systemdnetes.Domain.Node,
     module Systemdnetes.Domain.Pod,
     module Systemdnetes.Domain.Resource,
+    module Systemdnetes.Effects.FileServer,
+    module Systemdnetes.Effects.FileServer.Interpreter,
     module Systemdnetes.Effects.Log,
     module Systemdnetes.Effects.Log.Interpreter,
     module Systemdnetes.Effects.NodeStore,
@@ -24,6 +26,8 @@ import Systemdnetes.Domain.Cluster
 import Systemdnetes.Domain.Node
 import Systemdnetes.Domain.Pod
 import Systemdnetes.Domain.Resource
+import Systemdnetes.Effects.FileServer
+import Systemdnetes.Effects.FileServer.Interpreter
 import Systemdnetes.Effects.Log
 import Systemdnetes.Effects.Log.Interpreter
 import Systemdnetes.Effects.NodeStore

@@ -18,12 +18,13 @@ import Network.HTTP.Types
     status404,
     status405,
   )
-import Network.Wai (Request, Response, pathInfo, requestMethod, responseLBS, strictRequestBody)
+import Network.Wai (Request, Response, pathInfo, requestMethod, responseLBS)
 import Polysemy
 import Systemdnetes.Domain.Cluster (NodeCapacity (..), buildClusterState)
 import Systemdnetes.Domain.Node (HealthStatus (..), Node (..), NodeName (..), NodeStatus (..))
 import Systemdnetes.Domain.Pod (PodName (..), PodSpec (..))
 import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
+import Systemdnetes.Effects.FileServer (FileServer, readStaticFile)
 import Systemdnetes.Effects.Log (Log, logInfo)
 import Systemdnetes.Effects.NodeStore (NodeStore, getNode, listNodes, registerNode, removeNode)
 import Systemdnetes.Effects.Ssh (Ssh, runSshCommand)
@@ -42,16 +43,16 @@ defaultNodes :: [Node]
 defaultNodes = map fst defaultNodeCapacities
 
 handleRequest ::
-  (Member Log r, Member Store r, Member NodeStore r, Member Ssh r, Member (Embed IO) r) =>
+  (Member Log r, Member Store r, Member NodeStore r, Member Ssh r, Member FileServer r) =>
+  LBS.ByteString ->
   Request ->
   Sem r Response
-handleRequest req = do
-  body <- embed $ strictRequestBody req
+handleRequest body req =
   route (requestMethod req) (pathInfo req) body
   where
     route "GET" [] _ = do
       logInfo "GET /"
-      html <- embed $ LBS.readFile "static/index.html"
+      html <- readStaticFile "static/index.html"
       pure $ responseLBS status200 [(hContentType, "text/html")] html
     route "GET" ["healthz"] _ =
       pure $ textResponse status200 "ok\n"

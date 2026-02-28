@@ -45,6 +45,8 @@ library
     Systemdnetes.Domain.Node
     Systemdnetes.Domain.Pod
     Systemdnetes.Domain.Resource
+    Systemdnetes.Effects.FileServer
+    Systemdnetes.Effects.FileServer.Interpreter
     Systemdnetes.Effects.Log
     Systemdnetes.Effects.Log.Interpreter
     Systemdnetes.Effects.NodeStore
