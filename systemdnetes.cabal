@@ -78,6 +78,7 @@ test-suite systemdnetes-test
   hs-source-dirs:  test
   main-is:         Main.hs
   other-modules:
+    Systemdnetes.Domain.ClusterSpec
     Systemdnetes.Domain.ResourceSpec
     Systemdnetes.Effects.LogSpec
     Systemdnetes.Effects.StoreSpec

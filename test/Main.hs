@@ -1,5 +1,6 @@
 module Main (main) where
 
+import Systemdnetes.Domain.ClusterSpec qualified as ClusterSpec
 import Systemdnetes.Domain.ResourceSpec qualified as ResourceSpec
 import Systemdnetes.Effects.LogSpec qualified as LogSpec
 import Systemdnetes.Effects.StoreSpec qualified as StoreSpec
@@ -11,7 +12,8 @@ main =
   defaultMain $
     testGroup
       "systemdnetes"
-      [ ResourceSpec.tests,
+      [ ClusterSpec.tests,
+        ResourceSpec.tests,
         LogSpec.tests,
         StoreSpec.tests,
         SystemdSpec.tests
