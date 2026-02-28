@@ -21,18 +21,21 @@ storeToPure ::
   Sem (Store ': r) a ->
   Sem r (StoreState, a)
 storeToPure initial =
-  runState initial . reinterpret (\case
-    SubmitPod spec -> do
-      let pod = Pod {podSpec = spec, podState = Pending, podNode = Nothing}
-      modify' @StoreState $ Map.insert (podName spec) pod
-    ListPods -> do
-      s <- get @StoreState
-      pure $ Map.elems s
-    GetPod name -> do
-      s <- get @StoreState
-      pure $ Map.lookup name s
-    DeletePod name ->
-      modify' @StoreState $ Map.delete name)
+  runState initial
+    . reinterpret
+      ( \case
+          SubmitPod spec -> do
+            let pod = Pod {podSpec = spec, podState = Pending, podNode = Nothing}
+            modify' @StoreState $ Map.insert (podName spec) pod
+          ListPods -> do
+            s <- get @StoreState
+            pure $ Map.elems s
+          GetPod name -> do
+            s <- get @StoreState
+            pure $ Map.lookup name s
+          DeletePod name ->
+            modify' @StoreState $ Map.delete name
+      )
 
 -- | IO interpreter backed by a TVar for concurrent access across requests.
 storeToIO :: (Member (Embed IO) r) => TVar StoreState -> Sem (Store ': r) a -> Sem r a

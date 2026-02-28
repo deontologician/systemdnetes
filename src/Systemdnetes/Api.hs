@@ -60,8 +60,7 @@ handleRequest req = do
             Nothing -> pure $ textResponse status201 "created\n"
     route "GET" ["api", "v1", "pods"] _ = do
       logInfo "GET /api/v1/pods"
-      pods <- listPods
-      pure $ jsonResponse status200 pods
+      jsonResponse status200 <$> listPods
     route "GET" ["api", "v1", "pods", name] _ = do
       logInfo $ "GET /api/v1/pods/" <> name
       result <- getPod (PodName name)
@@ -89,5 +88,5 @@ jsonResponse status val =
   responseLBS status [(hContentType, "application/json")] (encode val)
 
 textResponse :: Status -> LBS.ByteString -> Response
-textResponse status msg =
-  responseLBS status [(hContentType, "text/plain")] msg
+textResponse status =
+  responseLBS status [(hContentType, "text/plain")]

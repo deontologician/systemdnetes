@@ -29,8 +29,7 @@ genText = Gen.text (Range.linear 1 50) Gen.alphaNum
 
 genPodSpec :: Gen PodSpec
 genPodSpec =
-  PodSpec
-    <$> (PodName <$> genText)
+  (PodSpec . PodName <$> genText)
     <*> (FlakeRef <$> genText)
     <*> (ResourceRequests <$> genText <*> genText)
     <*> Gen.int (Range.linear 1 10)

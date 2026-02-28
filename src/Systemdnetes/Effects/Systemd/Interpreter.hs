@@ -19,23 +19,25 @@ systemdToPure ::
   Sem (Systemd ': r) a ->
   Sem r (SystemdState, a)
 systemdToPure initial =
-  runState initial . reinterpret (\case
-    ListContainers node -> do
-      s <- get @SystemdState
-      let containers = maybe [] Map.toList (Map.lookup node s)
-      pure [ContainerInfo pod st | (pod, st) <- containers]
-    GetContainer node pod -> do
-      s <- get @SystemdState
-      pure $ Map.lookup node s >>= Map.lookup pod
-    StartContainer node pod -> do
-      modify' @SystemdState $
-        Map.alter
-          ( Just . maybe (Map.singleton pod ContainerRunning) (Map.insert pod ContainerRunning)
-          )
-          node
-    StopContainer node pod -> do
-      modify' @SystemdState $
-        Map.adjust (Map.insert pod ContainerStopped) node)
+  runState initial
+    . reinterpret
+      ( \case
+          ListContainers node -> do
+            s <- get @SystemdState
+            let containers = maybe [] Map.toList (Map.lookup node s)
+            pure [ContainerInfo pod st | (pod, st) <- containers]
+          GetContainer node pod -> do
+            s <- get @SystemdState
+            pure $ Map.lookup node s >>= Map.lookup pod
+          StartContainer node pod -> do
+            modify' @SystemdState $
+              Map.alter
+                (Just . maybe (Map.singleton pod ContainerRunning) (Map.insert pod ContainerRunning))
+                node
+          StopContainer node pod -> do
+            modify' @SystemdState $
+              Map.adjust (Map.insert pod ContainerStopped) node
+      )
 
 -- | Stubbed IO interpreter. Returns empty results / no-ops.
 -- Real machinectl + SSH integration comes later.
