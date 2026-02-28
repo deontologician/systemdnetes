@@ -6,7 +6,8 @@ import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Polysemy
-import Systemdnetes.Domain.Node (Node (..), NodeName (..))
+import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName (..))
+import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Systemdnetes.Effects.NodeStore
 import Systemdnetes.Effects.NodeStore.Interpreter
 import Test.Tasty (TestTree, testGroup)
@@ -27,8 +28,14 @@ tests =
 genText :: Gen Text
 genText = Gen.text (Range.linear 1 50) Gen.alphaNum
 
+genCapacity :: Gen NodeCapacity
+genCapacity =
+  NodeCapacity
+    <$> (Millicores <$> Gen.int (Range.linear 1000 8000))
+    <*> (Mebibytes <$> Gen.int (Range.linear 512 8192))
+
 genNode :: Gen Node
-genNode = (Node . NodeName <$> genText) <*> genText
+genNode = (Node . NodeName <$> genText) <*> genText <*> genCapacity
 
 prop_registerGet :: Property
 prop_registerGet = property $ do
@@ -71,8 +78,10 @@ prop_registerOverwrite = property $ do
   name <- forAll (NodeName <$> genText)
   addr1 <- forAll genText
   addr2 <- forAll genText
-  let node1 = Node name addr1
-      node2 = Node name addr2
+  cap1 <- forAll genCapacity
+  cap2 <- forAll genCapacity
+  let node1 = Node name addr1 cap1
+      node2 = Node name addr2 cap2
       (_, result) = run $ nodeStoreToPure Map.empty $ do
         registerNode node1
         registerNode node2

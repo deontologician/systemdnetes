@@ -24,15 +24,16 @@ tests =
 genText :: Gen Text
 genText = Gen.text (Range.linear 1 20) Gen.alphaNum
 
-genNode :: Gen Node
-genNode =
-  (Node . NodeName <$> genText)
-    <*> genText
-
 genCapacity :: Gen NodeCapacity
 genCapacity =
   (NodeCapacity . Millicores <$> Gen.int (Range.linear 1000 8000))
     <*> (Mebibytes <$> Gen.int (Range.linear 512 8192))
+
+genNode :: Gen Node
+genNode =
+  (Node . NodeName <$> genText)
+    <*> genText
+    <*> genCapacity
 
 genPodSpec :: Gen PodSpec
 genPodSpec =
@@ -51,7 +52,7 @@ genPod mNode =
 
 prop_emptyZero :: Property
 prop_emptyZero = property $ do
-  nodes <- forAll $ Gen.list (Range.linear 0 5) ((,) <$> genNode <*> genCapacity)
+  nodes <- forAll $ Gen.list (Range.linear 0 5) genNode
   let cs = buildClusterState nodes []
   csUsedCpu cs === Millicores 0
   csUsedMemory cs === Mebibytes 0
@@ -60,10 +61,9 @@ prop_emptyZero = property $ do
 prop_allPodsAccountedFor :: Property
 prop_allPodsAccountedFor = property $ do
   node <- forAll genNode
-  cap <- forAll genCapacity
   scheduledPods <- forAll $ Gen.list (Range.linear 0 5) (genPod (Just (nodeName node)))
   unscheduledPods <- forAll $ Gen.list (Range.linear 0 5) (genPod Nothing)
-  let cs = buildClusterState [(node, cap)] (scheduledPods ++ unscheduledPods)
+  let cs = buildClusterState [node] (scheduledPods ++ unscheduledPods)
       totalInViews = sum [length (nvPods nv) | nv <- csNodes cs]
       totalUnsched = length (csUnscheduledPods cs)
   totalInViews + totalUnsched === length scheduledPods + length unscheduledPods
@@ -71,9 +71,8 @@ prop_allPodsAccountedFor = property $ do
 prop_usageSums :: Property
 prop_usageSums = property $ do
   node <- forAll genNode
-  cap <- forAll genCapacity
   pods <- forAll $ Gen.list (Range.linear 1 5) (genPod (Just (nodeName node)))
-  let cs = buildClusterState [(node, cap)] pods
+  let cs = buildClusterState [node] pods
   -- Used CPU should equal sum of all pod CPUs in node views
   csUsedCpu cs === sum [pvCpu pv | nv <- csNodes cs, pv <- nvPods nv]
   csUsedMemory cs === sum [pvMemory pv | nv <- csNodes cs, pv <- nvPods nv]
@@ -81,9 +80,8 @@ prop_usageSums = property $ do
 prop_unscheduledNoNode :: Property
 prop_unscheduledNoNode = property $ do
   node <- forAll genNode
-  cap <- forAll genCapacity
   pods <- forAll $ Gen.list (Range.linear 1 5) (genPod Nothing)
-  let cs = buildClusterState [(node, cap)] pods
+  let cs = buildClusterState [node] pods
   -- All pods should be unscheduled
   length (csUnscheduledPods cs) === length pods
   -- Node should have no pods

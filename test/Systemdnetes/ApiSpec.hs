@@ -14,8 +14,9 @@ import Network.Wai.Internal (Request (..), Response (..))
 import Systemdnetes.Api (handleRequest)
 import Systemdnetes.App (PureResult (..), defaultPureConfig, runAppPure)
 import Systemdnetes.App qualified as App
-import Systemdnetes.Domain.Node (Node (..), NodeName (..))
+import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName (..))
 import Systemdnetes.Domain.Pod (FlakeRef (..), PodName (..), PodSpec (..), ResourceRequests (..))
+import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Hedgehog (testPropertyNamed)
 
@@ -67,10 +68,17 @@ genPodSpec =
     <*> (ResourceRequests <$> Gen.element ["100m", "500m", "1000m"] <*> Gen.element ["128Mi", "256Mi", "512Mi"])
     <*> Gen.int (Range.linear 1 5)
 
+genCapacity :: Gen NodeCapacity
+genCapacity =
+  NodeCapacity
+    <$> (Millicores <$> Gen.int (Range.linear 1000 8000))
+    <*> (Mebibytes <$> Gen.int (Range.linear 512 8192))
+
 genNode :: Gen Node
 genNode =
   (Node . NodeName <$> genText)
     <*> genText
+    <*> genCapacity
 
 -- | The health endpoint should always succeed, giving load balancers and
 -- uptime monitors a reliable signal that the server is alive.
