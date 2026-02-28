@@ -73,7 +73,10 @@ test-suite systemdnetes-test
   main-is:         Main.hs
   other-modules:
     Systemdnetes.Effects.LogSpec
+    Systemdnetes.Effects.StoreSpec
+    Systemdnetes.Effects.SystemdSpec
   build-depends:
+    , containers
     , hedgehog
     , systemdnetes
     , tasty
