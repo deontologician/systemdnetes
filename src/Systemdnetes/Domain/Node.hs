@@ -1,6 +1,8 @@
 module Systemdnetes.Domain.Node
   ( NodeName (..),
     Node (..),
+    HealthStatus (..),
+    NodeStatus (..),
   )
 where
 
@@ -15,6 +17,19 @@ newtype NodeName = NodeName Text
 data Node = Node
   { nodeName :: NodeName,
     nodeAddress :: Text
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
+
+data HealthStatus = Healthy | Unhealthy | Unknown
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
+
+data NodeStatus = NodeStatus
+  { statusNodeName :: NodeName,
+    statusAddress :: Text,
+    statusHealth :: HealthStatus,
+    statusDetail :: Maybe Text
   }
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)

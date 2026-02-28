@@ -45,6 +45,10 @@ library
     Systemdnetes.Domain.Pod
     Systemdnetes.Effects.Log
     Systemdnetes.Effects.Log.Interpreter
+    Systemdnetes.Effects.NodeStore
+    Systemdnetes.Effects.NodeStore.Interpreter
+    Systemdnetes.Effects.Ssh
+    Systemdnetes.Effects.Ssh.Interpreter
     Systemdnetes.Effects.Store
     Systemdnetes.Effects.Store.Interpreter
     Systemdnetes.Effects.Systemd
@@ -54,6 +58,7 @@ library
     , bytestring
     , containers
     , http-types
+    , process
     , stm
     , text
     , time
