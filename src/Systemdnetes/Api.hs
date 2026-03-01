@@ -26,10 +26,11 @@ import Systemdnetes.Effects.Log (Log, logInfo)
 import Systemdnetes.Effects.NodeStore (NodeStore, getNode, listNodes, registerNode, removeNode)
 import Systemdnetes.Effects.Ssh (Ssh, runSshCommand)
 import Systemdnetes.Effects.Store (Store, deletePod, getPod, listPods, submitPod)
+import Systemdnetes.Effects.Systemd (Systemd, getContainer, listContainers)
 import Systemdnetes.Sse (sseLogResponse)
 
 handleRequest ::
-  (Member Log r, Member Store r, Member NodeStore r, Member Ssh r, Member FileServer r) =>
+  (Member Log r, Member Store r, Member NodeStore r, Member Ssh r, Member FileServer r, Member Systemd r) =>
   LBS.ByteString ->
   Request ->
   Sem r Response
@@ -67,7 +68,16 @@ handleRequest body req =
       case result of
         Just node -> do
           status <- checkNodeHealth node
-          pure $ jsonResponse status200 status
+          containers <- listContainers (NodeName name)
+          pure $ jsonResponse status200 (status, containers)
+        Nothing -> pure $ textResponse status404 "node not found\n"
+    route "GET" ["api", "v1", "nodes", name, "containers"] _ = do
+      logInfo $ "GET /api/v1/nodes/" <> name <> "/containers"
+      result <- getNode (NodeName name)
+      case result of
+        Just _ -> do
+          containers <- listContainers (NodeName name)
+          pure $ jsonResponse status200 containers
         Nothing -> pure $ textResponse status404 "node not found\n"
     route "DELETE" ["api", "v1", "nodes", name] _ = do
       logInfo $ "DELETE /api/v1/nodes/" <> name
@@ -107,7 +117,11 @@ handleRequest body req =
       logInfo $ "GET /api/v1/pods/" <> name
       result <- getPod (PodName name)
       case result of
-        Just pod -> pure $ jsonResponse status200 pod
+        Just pod -> do
+          containerState <- case podNode pod of
+            Just assignedNode -> getContainer assignedNode (PodName name)
+            Nothing -> pure Nothing
+          pure $ jsonResponse status200 (pod, containerState)
         Nothing -> pure $ textResponse status404 "pod not found\n"
     route "DELETE" ["api", "v1", "pods", name] _ = do
       logInfo $ "DELETE /api/v1/pods/" <> name
