@@ -81,6 +81,9 @@
     text-align: center;
     letter-spacing: 1px;
   }
+  .nodes-section h2.orchestrator-heading {
+    color: #7fdbca;
+  }
 
   .nodes-grid {
     display: flex;
@@ -100,10 +103,16 @@
   .node-card:hover {
     border-color: #82aaff;
   }
+  .node-card-orchestrator {
+    border-color: #3a6b60;
+  }
+  .node-card-orchestrator:hover {
+    border-color: #7fdbca;
+  }
   .node-card .node-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 6px;
     margin-bottom: 12px;
   }
   .node-card .node-name {
@@ -111,8 +120,23 @@
     font-weight: 600;
     color: #c792ea;
   }
+  .node-card-orchestrator .node-name {
+    color: #7fdbca;
+  }
   .node-card .node-addr {
-    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #a0a0c0;
+    background: #151530;
+    border: 1px solid #2a2a4e;
+    border-radius: 4px;
+    padding: 2px 8px;
+    width: fit-content;
+  }
+  .node-card .node-addr .addr-icon {
+    font-size: 10px;
     color: #666;
   }
   .node-card .resource-row {
@@ -149,10 +173,25 @@
     transform: scale(0.5);
   }
 
-  .pod-state-Running  { background: #1b3a2a; color: #c3e88d; border: 1px solid #2d5a3a; }
-  .pod-state-Pending  { background: #3a3520; color: #ffcb6b; border: 1px solid #5a5530; }
-  .pod-state-Scheduled { background: #1a2a4e; color: #82aaff; border: 1px solid #2a3a6e; }
-  .pod-state-Failed   { background: #3a1a1a; color: #ff5370; border: 1px solid #5a2a2a; }
+  .pod-state-Running    { background: #1b3a2a; color: #c3e88d; border: 1px solid #2d5a3a; }
+  .pod-state-Pending    { background: #3a3520; color: #ffcb6b; border: 1px solid #5a5530; }
+  .pod-state-Scheduled  { background: #1a2a4e; color: #82aaff; border: 1px solid #2a3a6e; }
+  .pod-state-Failed     { background: #3a1a1a; color: #ff5370; border: 1px solid #5a2a2a; }
+  .pod-state-Rebuilding { background: #2a2040; color: #c792ea; border: 1px solid #4a3060; animation: rebuilding-pulse 2s ease-in-out infinite; }
+
+  @keyframes rebuilding-pulse {
+    0%, 100% { border-color: #4a3060; }
+    50%      { border-color: #8a60b0; }
+  }
+
+  @keyframes pod-pulse {
+    0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(130, 170, 255, 0.4); }
+    50%  { transform: scale(1.05); box-shadow: 0 0 8px 2px rgba(130, 170, 255, 0.3); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(130, 170, 255, 0); }
+  }
+  .state-transitioning {
+    animation: pod-pulse 600ms ease-in-out;
+  }
 
   .unscheduled-section {
     text-align: center;
@@ -191,6 +230,9 @@
     stroke-dasharray: 6 4;
     fill: none;
   }
+  .conn-line-orchestrator {
+    stroke: #3a5b50;
+  }
 
   .error-banner {
     text-align: center;
@@ -214,6 +256,11 @@
 
 <div class="overview" id="overview"></div>
 
+<div class="nodes-section" id="orchestrator-section" style="display: none;">
+  <h2 class="orchestrator-heading">orchestrator</h2>
+  <div class="nodes-grid" id="orchestrator-grid"></div>
+</div>
+
 <div class="nodes-section">
   <h2>worker nodes</h2>
   <div class="nodes-grid" id="nodes-grid"></div>
@@ -231,6 +278,9 @@
 
   const REFRESH_MS = 3000;
   const TRANSITION_MS = 750;
+
+  // Track previous pod states for transition animations
+  const previousStates = new Map();
 
   function utilizationColor(ratio) {
     if (ratio < 0.5) return d3.interpolateRgb('#c3e88d', '#ffcb6b')(ratio * 2);
@@ -266,11 +316,12 @@
       .style('background-color', d => d.ratio !== undefined ? utilizationColor(d.ratio) : '#555');
   }
 
-  function renderNodes(data) {
-    const grid = d3.select('#nodes-grid');
-    const nodeSel = grid.selectAll('.node-card').data(data.csNodes, d => d.nvNode.nodeName);
+  function renderNodeGrid(gridSelector, nodeViews, isOrchestrator) {
+    const grid = d3.select(gridSelector);
+    const cardClass = isOrchestrator ? 'node-card node-card-orchestrator' : 'node-card';
+    const nodeSel = grid.selectAll('.node-card').data(nodeViews, d => d.nvNode.nodeName);
 
-    const enter = nodeSel.enter().append('div').attr('class', 'node-card');
+    const enter = nodeSel.enter().append('div').attr('class', cardClass);
 
     // Header
     const header = enter.append('div').attr('class', 'node-header');
@@ -297,7 +348,7 @@
     const merged = enter.merge(nodeSel);
 
     merged.select('.node-name').text(d => d.nvNode.nodeName);
-    merged.select('.node-addr').text(d => d.nvNode.nodeAddress);
+    merged.select('.node-addr').html(d => '<span class="addr-icon">\u25C8</span>' + d.nvNode.nodeAddress);
 
     merged.each(function(d) {
       const card = d3.select(this);
@@ -333,12 +384,59 @@
         podEnter.classed('entering', false);
       });
 
-      podSel.merge(podEnter)
-        .attr('class', p => 'pod-tile pod-state-' + p.pvState)
+      const allPods = podSel.merge(podEnter);
+      allPods
+        .attr('class', p => {
+          const prev = previousStates.get(p.pvName);
+          const changed = prev !== undefined && prev !== p.pvState;
+          return 'pod-tile pod-state-' + p.pvState + (changed ? ' state-transitioning' : '');
+        })
         .text(p => p.pvName);
+
+      // Listen for animation end to remove the class
+      allPods.each(function(p) {
+        const el = this;
+        if (el.classList.contains('state-transitioning')) {
+          el.addEventListener('animationend', function handler() {
+            el.classList.remove('state-transitioning');
+            el.removeEventListener('animationend', handler);
+          });
+        }
+      });
     });
 
     nodeSel.exit().transition().duration(400).style('opacity', 0).remove();
+  }
+
+  function renderNodes(data) {
+    const orchestrators = data.csNodes.filter(n => n.nvNode.nodeRole === 'Orchestrator');
+    const workers = data.csNodes.filter(n => n.nvNode.nodeRole !== 'Orchestrator');
+
+    // Orchestrator section
+    const orchSection = d3.select('#orchestrator-section');
+    orchSection.style('display', orchestrators.length > 0 ? null : 'none');
+    renderNodeGrid('#orchestrator-grid', orchestrators, true);
+
+    // Worker section
+    renderNodeGrid('#nodes-grid', workers, false);
+  }
+
+  function updatePodStates(data) {
+    const allPods = [];
+    data.csNodes.forEach(n => n.nvPods.forEach(p => allPods.push(p)));
+    data.csUnscheduledPods.forEach(p => allPods.push(p));
+
+    // After rendering, update the previous states map
+    const currentNames = new Set();
+    allPods.forEach(p => {
+      currentNames.add(p.pvName);
+      previousStates.set(p.pvName, p.pvState);
+    });
+
+    // Clean up removed pods
+    for (const name of previousStates.keys()) {
+      if (!currentNames.has(name)) previousStates.delete(name);
+    }
   }
 
   function renderUnscheduled(data) {
@@ -370,37 +468,76 @@
       enter.classed('entering', false);
     });
 
-    sel.merge(enter)
-      .attr('class', p => 'pod-tile pod-state-' + p.pvState)
+    const allPods = sel.merge(enter);
+    allPods
+      .attr('class', p => {
+        const prev = previousStates.get(p.pvName);
+        const changed = prev !== undefined && prev !== p.pvState;
+        return 'pod-tile pod-state-' + p.pvState + (changed ? ' state-transitioning' : '');
+      })
       .text(p => p.pvName);
+
+    allPods.each(function(p) {
+      const el = this;
+      if (el.classList.contains('state-transitioning')) {
+        el.addEventListener('animationend', function handler() {
+          el.classList.remove('state-transitioning');
+          el.removeEventListener('animationend', handler);
+        });
+      }
+    });
   }
 
   function renderConnections() {
     const svg = d3.select('#connections');
-    const header = document.querySelector('header');
-    const nodeCards = document.querySelectorAll('.node-card');
-    if (!header || nodeCards.length === 0) return;
+    const headerEl = document.querySelector('header');
+    const orchCards = document.querySelectorAll('#orchestrator-grid .node-card');
+    const workerCards = document.querySelectorAll('#nodes-grid .node-card');
+    if (!headerEl) return;
 
-    const hRect = header.getBoundingClientRect();
-    const fromX = hRect.left + hRect.width / 2;
-    const fromY = hRect.bottom + 8;
+    const allLines = [];
 
-    const lines = Array.from(nodeCards).map(card => {
-      const r = card.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top - 4 };
-    });
+    const hRect = headerEl.getBoundingClientRect();
+    const headerX = hRect.left + hRect.width / 2;
+    const headerY = hRect.bottom + 8;
 
-    const lineSel = svg.selectAll('.conn-line').data(lines);
+    if (orchCards.length > 0) {
+      // Header -> orchestrators
+      Array.from(orchCards).forEach(card => {
+        const r = card.getBoundingClientRect();
+        allLines.push({ x1: headerX, y1: headerY, x2: r.left + r.width / 2, y2: r.top - 4, cls: 'conn-line conn-line-orchestrator' });
+      });
 
-    lineSel.enter().append('line').attr('class', 'conn-line')
+      // Orchestrators -> workers
+      Array.from(orchCards).forEach(oCard => {
+        const oRect = oCard.getBoundingClientRect();
+        const fromX = oRect.left + oRect.width / 2;
+        const fromY = oRect.bottom + 4;
+        Array.from(workerCards).forEach(wCard => {
+          const r = wCard.getBoundingClientRect();
+          allLines.push({ x1: fromX, y1: fromY, x2: r.left + r.width / 2, y2: r.top - 4, cls: 'conn-line' });
+        });
+      });
+    } else if (workerCards.length > 0) {
+      // No orchestrators: header -> workers directly
+      Array.from(workerCards).forEach(card => {
+        const r = card.getBoundingClientRect();
+        allLines.push({ x1: headerX, y1: headerY, x2: r.left + r.width / 2, y2: r.top - 4, cls: 'conn-line' });
+      });
+    }
+
+    const lineSel = svg.selectAll('line').data(allLines);
+
+    lineSel.enter().append('line')
       .merge(lineSel)
-      .attr('x1', fromX).attr('y1', fromY)
-      .attr('x2', d => d.x).attr('y2', d => d.y);
+      .attr('class', d => d.cls)
+      .attr('x1', d => d.x1).attr('y1', d => d.y1)
+      .attr('x2', d => d.x2).attr('y2', d => d.y2);
 
     lineSel.exit().remove();
 
     // Animate dash offset
-    svg.selectAll('.conn-line')
+    svg.selectAll('line')
       .attr('stroke-dashoffset', function() {
         const current = parseFloat(d3.select(this).attr('stroke-dashoffset') || 0);
         return current - 1;
@@ -432,6 +569,7 @@
       renderOverview(data);
       renderNodes(data);
       renderUnscheduled(data);
+      updatePodStates(data);
     } catch (e) {
       showError('Failed to fetch cluster state: ' + e.message);
     }
