@@ -20,12 +20,13 @@ import Network.Wai (Request, Response, pathInfo, requestMethod, responseLBS)
 import Polysemy
 import Systemdnetes.Domain.Cluster (buildClusterState)
 import Systemdnetes.Domain.Node (HealthStatus (..), Node (..), NodeName (..), NodeStatus (..))
-import Systemdnetes.Domain.Pod (PodName (..), PodSpec (..))
+import Systemdnetes.Domain.Pod (Pod (..), PodName (..), PodSpec (..))
 import Systemdnetes.Effects.FileServer (FileServer, readStaticFile)
 import Systemdnetes.Effects.Log (Log, logInfo)
 import Systemdnetes.Effects.NodeStore (NodeStore, getNode, listNodes, registerNode, removeNode)
 import Systemdnetes.Effects.Ssh (Ssh, runSshCommand)
 import Systemdnetes.Effects.Store (Store, deletePod, getPod, listPods, submitPod)
+import Systemdnetes.Sse (sseLogResponse)
 
 handleRequest ::
   (Member Log r, Member Store r, Member NodeStore r, Member Ssh r, Member FileServer r) =>
@@ -90,6 +91,18 @@ handleRequest body req =
     route "GET" ["api", "v1", "pods"] _ = do
       logInfo "GET /api/v1/pods"
       jsonResponse status200 <$> listPods
+    route "GET" ["api", "v1", "pods", name, "logs"] _ = do
+      logInfo $ "GET /api/v1/pods/" <> name <> "/logs"
+      result <- getPod (PodName name)
+      case result of
+        Nothing -> pure $ textResponse status404 "pod not found\n"
+        Just pod -> case podNode pod of
+          Nothing -> pure $ textResponse status400 "pod not scheduled\n"
+          Just assignedNode -> do
+            nodeResult <- getNode assignedNode
+            case nodeResult of
+              Nothing -> pure $ textResponse status404 "node not found\n"
+              Just node -> pure $ sseLogResponse (nodeAddress node) name
     route "GET" ["api", "v1", "pods", name] _ = do
       logInfo $ "GET /api/v1/pods/" <> name
       result <- getPod (PodName name)

@@ -15,7 +15,7 @@ import Systemdnetes.Api (handleRequest)
 import Systemdnetes.App (PureResult (..), defaultPureConfig, runAppPure)
 import Systemdnetes.App qualified as App
 import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName (..))
-import Systemdnetes.Domain.Pod (FlakeRef (..), PodName (..), PodSpec (..), ResourceRequests (..))
+import Systemdnetes.Domain.Pod (FlakeRef (..), Pod (..), PodName (..), PodSpec (..), PodState (..), ResourceRequests (..))
 import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Hedgehog (testPropertyNamed)
@@ -33,16 +33,23 @@ tests =
       testPropertyNamed "GET /api/v1/pods/<name> not found returns 404" "prop_getPodNotFound" prop_getPodNotFound,
       testPropertyNamed "DELETE /api/v1/pods/<name> not found returns 404" "prop_deletePodNotFound" prop_deletePodNotFound,
       testPropertyNamed "POST /api/v1/nodes with valid JSON returns 201" "prop_postNodeValid" prop_postNodeValid,
-      testPropertyNamed "GET /api/v1/nodes on empty store returns 200" "prop_listNodesEmpty" prop_listNodesEmpty
+      testPropertyNamed "GET /api/v1/nodes on empty store returns 200" "prop_listNodesEmpty" prop_listNodesEmpty,
+      testPropertyNamed "GET /api/v1/pods/<name>/logs not found returns 404" "prop_getPodLogsNotFound" prop_getPodLogsNotFound,
+      testPropertyNamed "GET /api/v1/pods/<name>/logs unscheduled returns 400" "prop_getPodLogsNotScheduled" prop_getPodLogsNotScheduled,
+      testPropertyNamed "GET /api/v1/pods/<name>/logs scheduled returns 200" "prop_getPodLogsScheduled" prop_getPodLogsScheduled
     ]
 
 -- | Run handleRequest through the full pure interpreter stack.
 -- Uses a minimal config with just the dashboard HTML file seeded.
 runPureApi :: LBS.ByteString -> Request -> Response
-runPureApi body req =
+runPureApi = runPureApiWith defaultPureConfig
+
+-- | Run handleRequest with a custom pure config, seeding the dashboard file.
+runPureApiWith :: App.PureAppConfig -> LBS.ByteString -> Request -> Response
+runPureApiWith cfg body req =
   pureResultValue $
     runAppPure
-      defaultPureConfig {App.pureFiles = Map.singleton "static/index.html" "<html>test</html>"}
+      cfg {App.pureFiles = Map.insert "static/index.html" "<html>test</html>" (App.pureFiles cfg)}
       (handleRequest body req)
 
 -- | Extract status from a WAI Response.
@@ -149,3 +156,42 @@ prop_listNodesEmpty :: Property
 prop_listNodesEmpty = property $ do
   let resp = runPureApi "" (testRequest "GET" ["api", "v1", "nodes"])
   responseStatus resp === status200
+
+-- | Requesting logs for a pod that doesn't exist should return 404.
+prop_getPodLogsNotFound :: Property
+prop_getPodLogsNotFound = property $ do
+  name <- forAll genText
+  let resp = runPureApi "" (testRequest "GET" ["api", "v1", "pods", name, "logs"])
+  responseStatus resp === status404
+
+-- | Requesting logs for a pod that exists but has no node assignment
+-- should return 400 because there's nowhere to stream logs from.
+prop_getPodLogsNotScheduled :: Property
+prop_getPodLogsNotScheduled = property $ do
+  spec <- forAll genPodSpec
+  let podN = podName spec
+      pod = Pod {podSpec = spec, podState = Pending, podNode = Nothing, podNetwork = Nothing}
+      cfg = defaultPureConfig {App.pureStoreState = Map.singleton podN pod}
+      resp = runPureApiWith cfg "" (testRequest "GET" ["api", "v1", "pods", podNameText podN, "logs"])
+  responseStatus resp === status400
+
+-- | Requesting logs for a scheduled pod with a known node should return 200
+-- (a streaming response that will pipe SSH journalctl output).
+prop_getPodLogsScheduled :: Property
+prop_getPodLogsScheduled = property $ do
+  spec <- forAll genPodSpec
+  nodeAddr <- forAll genText
+  let podN = podName spec
+      nodeN = NodeName "test-node"
+      node = Node nodeN nodeAddr (NodeCapacity (Millicores 2000) (Mebibytes 2048))
+      pod = Pod {podSpec = spec, podState = Scheduled, podNode = Just nodeN, podNetwork = Nothing}
+      cfg =
+        defaultPureConfig
+          { App.pureStoreState = Map.singleton podN pod,
+            App.pureNodeStoreState = Map.singleton nodeN node
+          }
+      resp = runPureApiWith cfg "" (testRequest "GET" ["api", "v1", "pods", podNameText podN, "logs"])
+  responseStatus resp === status200
+
+podNameText :: PodName -> Text
+podNameText (PodName t) = t
