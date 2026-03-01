@@ -247,6 +247,110 @@
     font-size: 12px;
     display: none;
   }
+
+  .fab {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #7fdbca;
+    color: #0f0f23;
+    border: none;
+    font-size: 28px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(127, 219, 202, 0.3);
+    transition: transform 200ms ease, box-shadow 200ms ease;
+    z-index: 10;
+  }
+  .fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(127, 219, 202, 0.5);
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #1a1a2e;
+    border: 1px solid #2a2a4e;
+    border-radius: 12px;
+    padding: 28px;
+    width: 400px;
+    max-width: 90vw;
+  }
+  .modal h3 {
+    font-size: 18px;
+    color: #7fdbca;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .modal .form-group {
+    margin-bottom: 14px;
+  }
+  .modal .form-group label {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .modal .form-group input,
+  .modal .form-group select {
+    width: 100%;
+    padding: 8px 10px;
+    background: #0f0f23;
+    border: 1px solid #2a2a4e;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 200ms ease;
+  }
+  .modal .form-group input:focus,
+  .modal .form-group select:focus {
+    border-color: #7fdbca;
+  }
+  .modal .form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+  .modal .btn {
+    padding: 8px 18px;
+    border-radius: 6px;
+    border: 1px solid #2a2a4e;
+    background: #0f0f23;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 200ms ease, background 200ms ease;
+  }
+  .modal .btn:hover { border-color: #555; }
+  .modal .btn-primary {
+    background: #7fdbca;
+    color: #0f0f23;
+    border-color: #7fdbca;
+    font-weight: 600;
+  }
+  .modal .btn-primary:hover {
+    background: #5fc4ab;
+    border-color: #5fc4ab;
+  }
 </style>
 </head>
 <body>
@@ -275,6 +379,50 @@
 <div class="unscheduled-section" id="unscheduled-section">
   <h2>unscheduled pods</h2>
   <div class="unscheduled-pods" id="unscheduled-pods"></div>
+</div>
+
+<button class="fab" id="fab" title="Create pod">+</button>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>create pod</h3>
+    <div class="form-group">
+      <label>flake</label>
+      <select id="pod-flake"></select>
+    </div>
+    <div class="form-group">
+      <label>pod name</label>
+      <input type="text" id="pod-name-input" placeholder="my-pod">
+    </div>
+    <div class="form-group">
+      <label>cpu</label>
+      <select id="pod-cpu">
+        <option value="100m">100m</option>
+        <option value="250m">250m</option>
+        <option value="500m" selected>500m</option>
+        <option value="1000m">1000m</option>
+        <option value="2000m">2000m</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>memory</label>
+      <select id="pod-memory">
+        <option value="128Mi">128Mi</option>
+        <option value="256Mi" selected>256Mi</option>
+        <option value="512Mi">512Mi</option>
+        <option value="1Gi">1Gi</option>
+        <option value="2Gi">2Gi</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>replicas</label>
+      <input type="number" id="pod-replicas" value="1" min="1" max="10">
+    </div>
+    <div class="form-actions">
+      <button class="btn" id="modal-cancel">Cancel</button>
+      <button class="btn btn-primary" id="modal-create">Create</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -584,6 +732,72 @@
       showError('Failed to fetch cluster state: ' + e.message);
     }
   }
+
+  // --- Pod creation modal ---
+  const overlay = document.getElementById('modal-overlay');
+  const fab = document.getElementById('fab');
+  const flakeSelect = document.getElementById('pod-flake');
+  let flakesLoaded = false;
+
+  async function loadFlakes() {
+    if (flakesLoaded) return;
+    try {
+      const resp = await fetch('/api/v1/flakes');
+      if (!resp.ok) return;
+      const flakes = await resp.json();
+      flakeSelect.innerHTML = '';
+      flakes.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = f;
+        flakeSelect.appendChild(opt);
+      });
+      flakesLoaded = true;
+    } catch (_) { /* ignore */ }
+  }
+
+  fab.addEventListener('click', () => {
+    loadFlakes();
+    overlay.classList.add('open');
+  });
+
+  document.getElementById('modal-cancel').addEventListener('click', () => {
+    overlay.classList.remove('open');
+  });
+
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+
+  document.getElementById('modal-create').addEventListener('click', async () => {
+    const name = document.getElementById('pod-name-input').value.trim();
+    const flake = flakeSelect.value;
+    const cpu = document.getElementById('pod-cpu').value;
+    const mem = document.getElementById('pod-memory').value;
+    const replicas = parseInt(document.getElementById('pod-replicas').value, 10) || 1;
+
+    if (!name || !flake) return;
+
+    const spec = {
+      podName: name,
+      podFlakeRef: flake,
+      podResources: { cpu: cpu, memory: mem },
+      podReplicas: replicas
+    };
+
+    try {
+      const resp = await fetch('/api/v1/pods', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(spec)
+      });
+      if (resp.ok) {
+        overlay.classList.remove('open');
+        document.getElementById('pod-name-input').value = '';
+        fetchAndRender();
+      }
+    } catch (_) { /* ignore */ }
+  });
 
   // Initial render + polling
   fetchAndRender();

@@ -1,5 +1,6 @@
 module Systemdnetes.Deploy.Bootstrap
   ( bootstrap,
+    authRegistry,
     checkPrereqs,
     pollHealth,
     registerNode,
@@ -18,7 +19,7 @@ import Systemdnetes.Deploy.Cmd
 import Systemdnetes.Deploy.Config
 import Systemdnetes.Deploy.Fly
 import Systemdnetes.Deploy.HttpReq
-import Systemdnetes.Deploy.Nix
+import Systemdnetes.Deploy.Nix (buildImages)
 import Systemdnetes.Deploy.Skopeo
 import Systemdnetes.Effects.Log
 
@@ -45,10 +46,10 @@ bootstrap cfg = runEither $ do
   liftE $ ensureApp app
 
   -- 3-4. Build images
-  liftE $ nixBuild ".#container" "result-container"
-  liftE $ nixBuild ".#worker" "result-worker"
+  liftE $ buildImages cfg
 
-  -- 5. Push images
+  -- 5. Authenticate registry and push images
+  liftE authRegistry
   liftE $ pushImage "result-container" registryOrch
   liftE $ pushImage "result-worker" registryWorker
 
@@ -95,18 +96,28 @@ bootstrap cfg = runEither $ do
   -- 13. Verify
   liftE $ verifyNodes apiBase
 
+-- | Authenticate with the Fly docker registry.
+authRegistry :: (Member Cmd r, Member Log r) => Sem r (Either Text ())
+authRegistry = do
+  logInfo "Authenticating with Fly registry"
+  runCmd_ "fly" ["auth", "docker"]
+
 -- | Check that required tools are installed.
+-- Uses tool-specific version commands since not all tools support --version.
 checkPrereqs :: (Member Cmd r, Member Log r) => Sem r (Either Text ())
 checkPrereqs = runEither $ do
   lift $ logInfo "Checking prerequisites"
   mapM_
-    ( \tool -> do
-        ok <- lift $ checkCmd tool
-        if ok
+    ( \(tool, args) -> do
+        result <- lift $ runCmd tool args ""
+        if cmdExitCode result == 0
           then pure ()
           else failE (tool <> " is not installed")
     )
-    ["fly", "skopeo", "nix"]
+    [ ("fly", ["version"]),
+      ("skopeo", ["--version"]),
+      ("nix", ["--version"])
+    ]
 
 -- | Ensure SSH keypair exists, creating it if necessary.
 ensureSshKeypair :: (Member Cmd r, Member Log r) => FilePath -> Text -> Sem r (Either Text ())

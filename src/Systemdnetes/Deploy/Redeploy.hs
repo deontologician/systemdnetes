@@ -8,12 +8,12 @@ import Data.ByteString.Lazy.Char8 qualified as LBS8
 import Data.Text (Text)
 import Data.Text qualified as T
 import Polysemy
-import Systemdnetes.Deploy.Bootstrap (checkPrereqs, pollHealth, registerNode, verifyNodes)
+import Systemdnetes.Deploy.Bootstrap (authRegistry, checkPrereqs, pollHealth, registerNode, verifyNodes)
 import Systemdnetes.Deploy.Cmd
 import Systemdnetes.Deploy.Config
 import Systemdnetes.Deploy.Fly
 import Systemdnetes.Deploy.HttpReq
-import Systemdnetes.Deploy.Nix
+import Systemdnetes.Deploy.Nix (buildImages)
 import Systemdnetes.Deploy.Skopeo
 import Systemdnetes.Effects.Log
 
@@ -31,18 +31,25 @@ redeploy cfg = runEither $ do
       apiBase = "https://" <> appName <> ".fly.dev"
 
   -- 1. Check prerequisites
+  lift $ logInfo "[1/7] Checking prerequisites"
   liftE checkPrereqs
 
-  -- 2. Build + push both images
-  liftE $ nixBuild ".#container" "result-container"
-  liftE $ nixBuild ".#worker" "result-worker"
+  -- 2. Build both images
+  lift $ logInfo "[2/7] Building images"
+  liftE $ buildImages cfg
+
+  -- 3. Push images to registry
+  lift $ logInfo "[3/7] Pushing images to registry"
+  liftE authRegistry
   liftE $ pushImage "result-container" registryOrch
   liftE $ pushImage "result-worker" registryWorker
 
-  -- 3. Deploy orchestrator
+  -- 4. Deploy orchestrator
+  lift $ logInfo "[4/7] Deploying orchestrator"
   liftE $ deploy app registryOrch
 
-  -- 4. List machines, get worker IDs
+  -- 5. List machines, get worker IDs
+  lift $ logInfo "[5/7] Updating workers"
   machinesJson <- liftE $ listMachines app
   machines <- case Aeson.eitherDecode (LBS8.pack (T.unpack machinesJson)) of
     Right ms -> pure (ms :: [FlyMachine])
@@ -56,9 +63,11 @@ redeploy cfg = runEither $ do
     workers
 
   -- 6. Poll health
+  lift $ logInfo "[6/7] Polling health"
   liftE $ pollHealth apiBase 30
 
   -- 7. Re-register nodes
+  lift $ logInfo "[7/7] Registering nodes"
   mapM_
     ( \m ->
         case machinePrivateIp m of
@@ -99,3 +108,6 @@ liftE = EitherT
 
 failE :: (Monad m) => e -> EitherT e m a
 failE = EitherT . pure . Left
+
+lift :: (Monad m) => m a -> EitherT e m a
+lift = EitherT . fmap Right
