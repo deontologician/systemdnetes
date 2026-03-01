@@ -68,6 +68,7 @@ library
     Systemdnetes.Effects.WireGuardControl
     Systemdnetes.Effects.WireGuardControl.Interpreter
     Systemdnetes.Deploy.App
+    Systemdnetes.Deploy.Bootstrap
     Systemdnetes.Deploy.Cmd
     Systemdnetes.Deploy.Cmd.Interpreter
     Systemdnetes.Deploy.Config
@@ -75,6 +76,7 @@ library
     Systemdnetes.Deploy.HttpReq
     Systemdnetes.Deploy.HttpReq.Interpreter
     Systemdnetes.Deploy.Nix
+    Systemdnetes.Deploy.Redeploy
     Systemdnetes.Deploy.Skopeo
     Systemdnetes.Sse
   build-depends:
