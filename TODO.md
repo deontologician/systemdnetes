@@ -114,8 +114,8 @@ These are high level tasks that need to be implemented.
 - [x] DNS for pod zone: dnsmasq authoritative on orchestrator, workers forward pod zone queries
 - [x] IpAllocator effect: allocate/release IPs from CIDR block (pure + IO interpreters)
 - [x] WireGuardControl effect: keypair generation and peer management (pure + IO interpreters)
-- [ ] Wire IP allocation into pod lifecycle (effect exists, not yet called during pod creation)
-- [ ] Wire key management into pod lifecycle (effect exists, not yet called during pod creation)
+- [x] Wire IP allocation into pod lifecycle (effect exists, not yet called during pod creation)
+- [x] Wire key management into pod lifecycle (effect exists, not yet called during pod creation)
 - [ ] Pod-side WireGuard config: injected into the pod's NixOS config via the wrapper module
 - [ ] Peer update loop: as pods come and go, update WireGuard peer configs on affected nodes
 
