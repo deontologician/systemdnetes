@@ -4,9 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    flake-compat.url = "github:edolstra/flake-compat";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, flake-compat }:
     {
       nixosModules = {
         orchestrator = import ./nix/modules/orchestrator.nix;
