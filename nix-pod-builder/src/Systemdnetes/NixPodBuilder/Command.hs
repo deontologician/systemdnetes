@@ -11,7 +11,7 @@ import Data.Text qualified as T
 import Systemdnetes.Domain.Network (IPv4, ipToText)
 import Systemdnetes.Domain.Pod (FlakeRef (..), PodName (..))
 
-data PodBuildConfig = PodBuildConfig
+newtype PodBuildConfig = PodBuildConfig
   { pbcComposePodNixPath :: FilePath
   }
   deriving stock (Eq, Show)

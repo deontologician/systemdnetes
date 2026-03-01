@@ -1,6 +1,7 @@
 module Systemdnetes.Reconciler.LoopSpec (tests) where
 
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Hedgehog
@@ -148,7 +149,7 @@ prop_multiplePodLimitedCapacity = property $ do
         submitPod spec2
         reconcileOnce
   let pods = Map.elems (pureResultStore result)
-      scheduled = filter (\p -> podNode p /= Nothing) pods
+      scheduled = filter (isJust . podNode) pods
       pending = filter (\p -> podState p == Pending) pods
   length scheduled === 1
   length pending === 1
@@ -164,7 +165,7 @@ prop_noNodesPodsPending = property $ do
     [pod] -> podState pod === Pending
     _ -> failure
   let logs = pureResultLogs result
-  assert $ any (\l -> T.isInfixOf "Unschedulable" (logMessageContent l)) logs
+  assert $ any (T.isInfixOf "Unschedulable" . logMessageContent) logs
 
 prop_executeStartPod :: Property
 prop_executeStartPod = property $ do

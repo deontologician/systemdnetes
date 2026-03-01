@@ -5,7 +5,8 @@ module Systemdnetes.Scheduler.Algo
   )
 where
 
-import Data.List (foldl', sortOn)
+import Data.List (sortOn)
+import Data.Maybe (isJust, isNothing)
 import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName, NodeRole (..))
 import Systemdnetes.Domain.Pod (Pod (..), PodName, PodSpec (..), PodState (..), ResourceRequests (..))
 import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..), parseCpu, parseMemory)
@@ -25,9 +26,9 @@ buildNodeResources nodes pods =
               nrCommittedCpu = Millicores 0,
               nrCommittedMemory = Mebibytes 0
             }
-          | n <- workers
+        | n <- workers
         ]
-      assignedPods = filter (\p -> podNode p /= Nothing && podState p /= Pending) pods
+      assignedPods = filter (\p -> isJust (podNode p) && podState p /= Pending) pods
    in foldl' addPodCommitment initialLedger assignedPods
 
 -- | Add a pod's resource requests to its assigned node in the ledger.
@@ -63,12 +64,13 @@ scheduleOne ledger pod
           (ledger, Unschedulable name InvalidResources)
         Just (cpuReq, memReq) ->
           let candidates =
-                [ (nr, remainCpu + remainMem)
-                  | nr <- ledger,
-                    let remainCpu = nrCapacityCpu nr - nrCommittedCpu nr - cpuReq,
-                    let remainMem = nrCapacityMemory nr - nrCommittedMemory nr - memReq,
-                    remainCpu >= Millicores 0,
-                    remainMem >= Mebibytes 0
+                [ (nr, score)
+                | nr <- ledger,
+                  let Millicores remainCpu = nrCapacityCpu nr - nrCommittedCpu nr - cpuReq,
+                  let Mebibytes remainMem = nrCapacityMemory nr - nrCommittedMemory nr - memReq,
+                  remainCpu >= 0,
+                  remainMem >= 0,
+                  let score = remainCpu + remainMem
                 ]
            in case candidates of
                 [] -> (ledger, classifyShortage ledger cpuReq memReq name)
@@ -84,7 +86,7 @@ scheduleOne ledger pod
 schedule :: [Node] -> [Pod] -> ScheduleResult
 schedule nodes pods =
   let ledger = buildNodeResources nodes pods
-      pending = filter (\p -> podState p == Pending && podNode p == Nothing) pods
+      pending = filter (\p -> podState p == Pending && isNothing (podNode p)) pods
       (_, decisions) = foldl' step (ledger, []) pending
    in buildResult (reverse decisions)
   where
@@ -111,8 +113,11 @@ classifyShortage ledger cpuReq memReq name =
         (True, True) -> Unschedulable name InsufficientResources
 
 -- | Pick the candidate with the smallest remaining capacity (best-fit).
-minimumByRemainder :: [(NodeResources, Millicores)] -> (NodeResources, Millicores)
-minimumByRemainder = head . sortOn snd
+minimumByRemainder :: [(NodeResources, Int)] -> (NodeResources, Int)
+minimumByRemainder [] = error "minimumByRemainder: empty list"
+minimumByRemainder xs = case sortOn snd xs of
+  (x : _) -> x
+  [] -> error "unreachable"
 
 -- | Commit resources to a specific node in the ledger.
 commitToNode :: NodeName -> Millicores -> Mebibytes -> [NodeResources] -> [NodeResources]

@@ -11,7 +11,7 @@ import Control.Concurrent (threadDelay)
 import Data.Text (Text)
 import Polysemy
 import Systemdnetes.Domain.Node (NodeName (..))
-import Systemdnetes.Domain.Pod (FlakeRef, Pod (..), PodName (..), PodSpec (..), PodState (..))
+import Systemdnetes.Domain.Pod (Pod (..), PodName (..), PodSpec (..), PodState (..))
 import Systemdnetes.Domain.Reconcile (ReconcileAction (..), reconcilePod)
 import Systemdnetes.Effects.Log (Log, logInfo, logWarn)
 import Systemdnetes.Effects.NodeStore (NodeStore, listNodes)
@@ -19,7 +19,7 @@ import Systemdnetes.Effects.Store (Store, assignPodNode, getPod, listPods, setPo
 import Systemdnetes.Effects.Systemd (Systemd, getContainer, rebuildContainer, stopContainer)
 import Systemdnetes.Scheduler (ScheduleResult (..), schedule)
 
-data ReconcileConfig = ReconcileConfig
+newtype ReconcileConfig = ReconcileConfig
   { rcIntervalMicroseconds :: Int
   }
   deriving stock (Eq, Show)

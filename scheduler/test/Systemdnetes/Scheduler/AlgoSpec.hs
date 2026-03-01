@@ -137,9 +137,9 @@ prop_noOvercommit = property $ do
   let result = schedule nodes pods
       assignedPods =
         [ pod {podState = Scheduled, podNode = Just assignedNode}
-          | (pName, assignedNode) <- srAssignments result,
-            pod <- pods,
-            podName (podSpec pod) == pName
+        | (pName, assignedNode) <- srAssignments result,
+          pod <- pods,
+          podName (podSpec pod) == pName
         ]
       finalLedger = buildNodeResources nodes assignedPods
   mapM_
@@ -179,10 +179,9 @@ prop_bestFitPreference = property $ do
 prop_buildNodeResourcesSumsMatch :: Property
 prop_buildNodeResourcesSumsMatch = property $ do
   node <- forAll genWorkerNode
-  cpuVals <- forAll $ Gen.list (Range.linear 1 5) genMillicores
-  memVals <- forAll $ Gen.list (Range.linear 1 5) genMebibytes
-  let podPairs = zip cpuVals memVals
-      assignedPods =
+  numPods <- forAll $ Gen.int (Range.linear 1 5)
+  podPairs <- forAll $ Gen.list (Range.singleton numPods) ((,) <$> genMillicores <*> genMebibytes)
+  let assignedPods =
         [ Pod
             { podSpec =
                 PodSpec
@@ -195,13 +194,13 @@ prop_buildNodeResourcesSumsMatch = property $ do
               podNode = Just (nodeName node),
               podNetwork = Nothing
             }
-          | ((c, m), i) <- zip podPairs [(0 :: Int) ..]
+        | ((c, m), i) <- zip podPairs [(0 :: Int) ..]
         ]
       ledger = buildNodeResources [node] assignedPods
   case ledger of
     [nr] -> do
-      nrCommittedCpu nr === Millicores (sum cpuVals)
-      nrCommittedMemory nr === Mebibytes (sum memVals)
+      nrCommittedCpu nr === Millicores (sum [c | (c, _) <- podPairs])
+      nrCommittedMemory nr === Mebibytes (sum [m | (_, m) <- podPairs])
     _ -> failure
 
 prop_invalidResourcesUnschedulable :: Property

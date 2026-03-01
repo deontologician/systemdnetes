@@ -3,6 +3,7 @@ module Main (main) where
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM (newTVarIO)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Network.Wai (strictRequestBody)
 import Network.Wai.Handler.Warp (run)
@@ -17,7 +18,7 @@ main = do
   nodeStore <- newTVarIO Map.empty
 
   -- Parse pod CIDR from env (default: 10.100.0.0/16)
-  cidrStr <- maybe "10.100.0.0/16" id <$> lookupEnv "SYSTEMDNETES_POD_CIDR"
+  cidrStr <- fromMaybe "10.100.0.0/16" <$> lookupEnv "SYSTEMDNETES_POD_CIDR"
   cidr <- case parseCidr (T.pack cidrStr) of
     Just c -> pure c
     Nothing -> error $ "Invalid SYSTEMDNETES_POD_CIDR: " <> cidrStr
@@ -25,7 +26,7 @@ main = do
   allocatorState <- newTVarIO (mkAllocatorState cidr)
 
   -- DNS hosts directory (default: /var/lib/systemdnetes/dns)
-  hostsDir <- maybe "/var/lib/systemdnetes/dns" id <$> lookupEnv "SYSTEMDNETES_DNS_HOSTS_DIR"
+  hostsDir <- fromMaybe "/var/lib/systemdnetes/dns" <$> lookupEnv "SYSTEMDNETES_DNS_HOSTS_DIR"
 
   -- WireGuard interface name (default: systemdnetes)
   wgIface <- maybe "systemdnetes" T.pack <$> lookupEnv "SYSTEMDNETES_WG_IFACE"
