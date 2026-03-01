@@ -9,7 +9,14 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Polysemy
 import System.Exit (ExitCode (..))
-import System.Process (readProcessWithExitCode)
+import System.IO (hClose, hGetContents, hPutStr)
+import System.Process
+  ( CreateProcess (..),
+    StdStream (..),
+    createProcess,
+    proc,
+    waitForProcess,
+  )
 import Systemdnetes.Deploy.Cmd
 
 -- | Handler for pure interpreter: pattern-match on command name/args
@@ -25,20 +32,31 @@ cmdToPure handler = interpret $ \case
       Just result -> result
       Nothing -> CmdResult 127 "" ("command not found: " <> prog)
 
--- | IO interpreter: shells out via readProcessWithExitCode.
+-- | IO interpreter: shells out via createProcess.
+-- Stderr is inherited so build progress streams to the terminal in real time.
+-- Stdout is captured (needed by 'readCmd').
 cmdToIO :: (Member (Embed IO) r) => Sem (Cmd ': r) a -> Sem r a
 cmdToIO = interpret $ \case
   RunCmd prog args stdin' -> embed $ do
-    (exitCode, stdout, stderr) <-
-      readProcessWithExitCode
-        (T.unpack prog)
-        (map T.unpack args)
-        (T.unpack stdin')
+    let cp =
+          (proc (T.unpack prog) (map T.unpack args))
+            { std_in = if T.null stdin' then Inherit else CreatePipe,
+              std_out = CreatePipe,
+              std_err = Inherit
+            }
+    (mbStdinH, Just stdoutH, _, ph) <- createProcess cp
+    case mbStdinH of
+      Just h -> do
+        hPutStr h (T.unpack stdin')
+        hClose h
+      Nothing -> pure ()
+    stdout <- hGetContents stdoutH
+    exitCode <- waitForProcess ph
     pure
       CmdResult
         { cmdExitCode = case exitCode of
             ExitSuccess -> 0
             ExitFailure n -> n,
           cmdStdout = T.pack stdout,
-          cmdStderr = T.pack stderr
+          cmdStderr = ""
         }

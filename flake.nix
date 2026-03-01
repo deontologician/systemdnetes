@@ -44,20 +44,17 @@
           default = systemdnetes;
 
           # Orchestrator: API server + SSH client for health checks
-          container = pkgs.dockerTools.buildImage {
+          container = pkgs.dockerTools.buildLayeredImage {
             name = "systemdnetes";
             tag = "latest";
-            copyToRoot = pkgs.buildEnv {
-              name = "orchestrator-root";
-              paths = [
-                pkgs.openssh    # ssh client for health checks
-                pkgs.coreutils  # mkdir, chmod
-                pkgs.bash
-                staticFiles
-                passwdFile
-              ];
-              pathsToLink = [ "/bin" "/etc" "/static" ];
-            };
+            contents = [
+              pkgs.openssh    # ssh client for health checks
+              pkgs.coreutils  # mkdir, chmod
+              pkgs.bash
+              staticFiles
+              passwdFile
+              (pkgs.lib.getBin systemdnetes)
+            ];
             config = {
               Env = [ "PATH=/bin" ];
               Entrypoint = [
@@ -89,21 +86,17 @@
                   "$UPTIME" "$LOAD" "$MEM_TOTAL" "$MEM_AVAIL"
               '';
             in
-            pkgs.dockerTools.buildImage {
+            pkgs.dockerTools.buildLayeredImage {
               name = "systemdnetes-worker";
               tag = "latest";
-              copyToRoot = pkgs.buildEnv {
-                name = "worker-root";
-                paths = [
-                  pkgs.openssh
-                  pkgs.coreutils
-                  pkgs.gawk
-                  pkgs.bash
-                  healthScript
-                  passwdFile
-                ];
-                pathsToLink = [ "/bin" "/etc" ];
-              };
+              contents = [
+                pkgs.openssh
+                pkgs.coreutils
+                pkgs.gawk
+                pkgs.bash
+                healthScript
+                passwdFile
+              ];
               config = {
                 Env = [ "PATH=/bin" ];
                 Entrypoint = [

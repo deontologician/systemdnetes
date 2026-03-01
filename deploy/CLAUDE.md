@@ -21,18 +21,6 @@ nix build .#worker
 # result -> OCI tar.gz
 ```
 
-## Remote Build
-
-For faster builds, offload to a remote machine with the repo cloned:
-
-```bash
-deploy/remote-build.sh auralith.vhs.city           # build both images
-deploy/remote-build.sh auralith.vhs.city container  # orchestrator only
-deploy/remote-build.sh auralith.vhs.city worker     # worker only
-```
-
-This SSHes to the remote, runs `git pull --ff-only`, builds via Nix, and copies the resulting `.tar.gz` archives back as `result` and/or `result-worker` in the project root. These are then ready for the `skopeo copy` commands below.
-
 ## Deploy Orchestrator
 
 ```bash

@@ -29,11 +29,13 @@ remoteBuild host flakeTarget outLink = do
   case result of
     Left err -> pure (Left err)
     Right () -> do
+      logInfo ("Build complete, resolving store path for " <> outLink)
       storePath <- readCmd "ssh" [host, "readlink -f " <> remoteDir <> "/" <> outLink]
       case storePath of
         Left err -> pure (Left err)
         Right path -> do
           let cleanPath = stripNewline path
+          logInfo ("Copying " <> cleanPath <> " from " <> host)
           _ <- runCmd_ "rm" ["-f", outLink]
           runCmd_ "scp" [host <> ":" <> cleanPath, outLink]
   where
