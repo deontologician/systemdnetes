@@ -190,6 +190,7 @@ and re-register nodes (node store is in-memory, lost on restart).
 ### Environment variables
 
 - `NUM_WORKERS` -- number of worker machines (default: 2)
+- `REMOTE_HOST` -- SSH host for remote nix builds (default: local build). Set this when the local machine can't build Linux OCI images (e.g. macOS). Example: `REMOTE_HOST=auralith.vhs.city cabal run systemdnetes-deploy -- redeploy`
 
 ### SSH keys
 
