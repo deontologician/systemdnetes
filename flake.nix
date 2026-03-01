@@ -136,6 +136,12 @@
             pkgs.ormolu
             pkgs.hlint
             pkgs.ghcid
+            pkgs.skopeo
+            pkgs.flyctl
+            pkgs.curl
+            pkgs.openssh
+            pkgs.git
+            pkgs.findutils
           ];
         };
       });
