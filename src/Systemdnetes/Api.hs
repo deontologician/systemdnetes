@@ -21,6 +21,7 @@ import Polysemy
 import Systemdnetes.Domain.Cluster (buildClusterState)
 import Systemdnetes.Domain.Node (HealthStatus (..), Node (..), NodeName (..), NodeStatus (..))
 import Systemdnetes.Domain.Pod (Pod (..), PodName (..), PodSpec (..))
+import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Systemdnetes.Effects.FileServer (FileServer, readStaticFile)
 import Systemdnetes.Effects.Log (Log, logInfo)
 import Systemdnetes.Effects.NodeStore (NodeStore, getNode, listNodes, registerNode, removeNode)
