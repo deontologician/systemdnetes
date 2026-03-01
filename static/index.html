@@ -159,7 +159,8 @@
 
   .pod-tile {
     display: inline-flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     padding: 4px 10px;
     border-radius: 4px;
     font-size: 11px;
@@ -167,6 +168,11 @@
     opacity: 1;
     transform: scale(1);
     transition: opacity 400ms ease, transform 400ms ease, background-color 400ms ease;
+  }
+  .pod-ip {
+    font-size: 9px;
+    opacity: 0.6;
+    font-weight: 400;
   }
   .pod-tile.entering {
     opacity: 0;
@@ -376,8 +382,9 @@
         .remove();
 
       const podEnter = podSel.enter().append('div')
-        .attr('class', p => 'pod-tile entering pod-state-' + p.pvState)
-        .text(p => p.pvName);
+        .attr('class', p => 'pod-tile entering pod-state-' + p.pvState);
+      podEnter.append('span').attr('class', 'pod-name');
+      podEnter.append('span').attr('class', 'pod-ip');
 
       // Trigger enter animation
       requestAnimationFrame(() => {
@@ -390,8 +397,9 @@
           const prev = previousStates.get(p.pvName);
           const changed = prev !== undefined && prev !== p.pvState;
           return 'pod-tile pod-state-' + p.pvState + (changed ? ' state-transitioning' : '');
-        })
-        .text(p => p.pvName);
+        });
+      allPods.select('.pod-name').text(p => p.pvName);
+      allPods.select('.pod-ip').text(p => p.pvIp || '');
 
       // Listen for animation end to remove the class
       allPods.each(function(p) {
@@ -461,8 +469,9 @@
       .remove();
 
     const enter = sel.enter().append('div')
-      .attr('class', p => 'pod-tile entering pod-state-' + p.pvState)
-      .text(p => p.pvName);
+      .attr('class', p => 'pod-tile entering pod-state-' + p.pvState);
+    enter.append('span').attr('class', 'pod-name');
+    enter.append('span').attr('class', 'pod-ip');
 
     requestAnimationFrame(() => {
       enter.classed('entering', false);
@@ -474,8 +483,9 @@
         const prev = previousStates.get(p.pvName);
         const changed = prev !== undefined && prev !== p.pvState;
         return 'pod-tile pod-state-' + p.pvState + (changed ? ' state-transitioning' : '');
-      })
-      .text(p => p.pvName);
+      });
+    allPods.select('.pod-name').text(p => p.pvName);
+    allPods.select('.pod-ip').text(p => p.pvIp || '');
 
     allPods.each(function(p) {
       const el = this;
