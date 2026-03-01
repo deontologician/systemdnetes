@@ -192,10 +192,10 @@
 
           # Orchestrator: full NixOS system with systemd, API server,
           # dnsmasq, WireGuard, and SSH client
-          container = pkgs.dockerTools.buildImage {
+          container = pkgs.dockerTools.buildLayeredImage {
             name = "systemdnetes";
             tag = "latest";
-            copyToRoot = orchestratorRootfs;
+            contents = [ orchestratorRootfs ];
             config = {
               Entrypoint = [ "${orchestratorEntrypoint}" ];
             };
@@ -203,10 +203,10 @@
 
           # Worker: full NixOS system with systemd, sshd, dnsmasq,
           # WireGuard, and systemd-nspawn support
-          worker = pkgs.dockerTools.buildImage {
+          worker = pkgs.dockerTools.buildLayeredImage {
             name = "systemdnetes-worker";
             tag = "latest";
-            copyToRoot = workerRootfs;
+            contents = [ workerRootfs ];
             config = {
               Entrypoint = [ "${workerEntrypoint}" ];
             };
