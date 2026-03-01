@@ -71,8 +71,11 @@ library
     Systemdnetes.Deploy.Cmd
     Systemdnetes.Deploy.Cmd.Interpreter
     Systemdnetes.Deploy.Config
+    Systemdnetes.Deploy.Fly
     Systemdnetes.Deploy.HttpReq
     Systemdnetes.Deploy.HttpReq.Interpreter
+    Systemdnetes.Deploy.Nix
+    Systemdnetes.Deploy.Skopeo
     Systemdnetes.Sse
   build-depends:
     , aeson
