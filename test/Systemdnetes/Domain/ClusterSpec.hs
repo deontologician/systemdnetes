@@ -1,13 +1,16 @@
 module Systemdnetes.Domain.ClusterSpec (tests) where
 
 import Data.Text (Text)
+import Data.Word (Word32)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Systemdnetes.Domain.Cluster
+import Systemdnetes.Domain.Network (IPv4 (..), ipToText)
 import Systemdnetes.Domain.Node (Node (..), NodeName (..), NodeRole (..))
 import Systemdnetes.Domain.Pod
 import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
+import Systemdnetes.Domain.WireGuard (WgKeyPair (..), WgPrivateKey (..), WgPublicKey (..))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Hedgehog (testPropertyNamed)
 
@@ -18,7 +21,8 @@ tests =
     [ testPropertyNamed "empty cluster has zero usage" "prop_emptyZero" prop_emptyZero,
       testPropertyNamed "all pods accounted for" "prop_allPodsAccountedFor" prop_allPodsAccountedFor,
       testPropertyNamed "scheduled pod usage sums correctly" "prop_usageSums" prop_usageSums,
-      testPropertyNamed "unscheduled pods have no node" "prop_unscheduledNoNode" prop_unscheduledNoNode
+      testPropertyNamed "unscheduled pods have no node" "prop_unscheduledNoNode" prop_unscheduledNoNode,
+      testPropertyNamed "pod view preserves IP" "prop_podViewPreservesIp" prop_podViewPreservesIp
     ]
 
 genText :: Gen Text
@@ -43,6 +47,13 @@ genPodSpec =
     <*> (ResourceRequests <$> Gen.element ["100m", "500m", "1000m"] <*> Gen.element ["128Mi", "256Mi", "512Mi"])
     <*> Gen.int (Range.linear 1 5)
 
+genNetworkInfo :: Gen NetworkInfo
+genNetworkInfo =
+  (NetworkInfo . IPv4 <$> Gen.word32 (Range.linear 0 maxBound))
+    <*> ( (WgKeyPair . WgPrivateKey <$> genText)
+            <*> (WgPublicKey <$> genText)
+        )
+
 genPod :: Maybe NodeName -> Gen Pod
 genPod mNode =
   Pod
@@ -50,6 +61,14 @@ genPod mNode =
     <*> Gen.element [Pending, Scheduled, Running]
     <*> pure mNode
     <*> pure Nothing
+
+genPodWithNetwork :: Maybe NodeName -> Maybe NetworkInfo -> Gen Pod
+genPodWithNetwork mNode mNet =
+  Pod
+    <$> genPodSpec
+    <*> Gen.element [Pending, Scheduled, Running]
+    <*> pure mNode
+    <*> pure mNet
 
 prop_emptyZero :: Property
 prop_emptyZero = property $ do
@@ -87,3 +106,13 @@ prop_unscheduledNoNode = property $ do
   length (csUnscheduledPods cs) === length pods
   -- Node should have no pods
   all (null . nvPods) (csNodes cs) === True
+
+prop_podViewPreservesIp :: Property
+prop_podViewPreservesIp = property $ do
+  node <- forAll genNode
+  netInfo <- forAll genNetworkInfo
+  pod <- forAll $ genPodWithNetwork (Just (nodeName node)) (Just netInfo)
+  let cs = buildClusterState [node] [pod]
+      podViews = concatMap nvPods (csNodes cs)
+  length podViews === 1
+  pvIp (head podViews) === Just (ipToText (netIp netInfo))
