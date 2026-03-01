@@ -4,11 +4,11 @@ These are high level tasks that need to be implemented.
 
 ## Core Nix Library
 
-- [ ] Define the pod module interface (`pod.name`, `pod.resources`, `pod.replicas`, etc.)
+- [x] Define the pod module interface (`pod.name`, `pod.resources`, `pod.replicas`, etc.) — `nix/modules/pod.nix`, exported as `nixosModules.pod`
 - [ ] Write the wrapper module that injects platform config (WireGuard, store mounts) around a user-provided NixOS module
-- [ ] Generate nspawn machine configs from pod definitions (nspawn settings, bind mounts for `/nix/store`, cgroup resource limits)
+- [x] Generate nspawn machine configs from pod definitions (nspawn settings, bind mounts for `/nix/store`, cgroup resource limits) — `Domain.Nspawn` renders `.nspawn` files and machine setup scripts
 - [ ] Build tooling: evaluate a pod's Nix expression to extract the `pod` attrset without building the full closure
-- [ ] Build tooling: `nix build` the NixOS system closure for a pod, producing a switchable system profile
+- [x] Build tooling: `nix build` the NixOS system closure for a pod, producing a switchable system profile — `RebuildContainer` runs `nix build <flakeRef>` on the worker via SSH
 
 ## Orchestrator
 
@@ -17,6 +17,8 @@ These are high level tasks that need to be implemented.
   - [x] JSON request/response via aeson
   - [x] SSE log streaming endpoint
   - [x] Cluster state aggregation endpoint (`GET /api/v1/cluster`)
+  - [x] Container state in node/pod responses (`GET /api/v1/nodes/:name`, `GET /api/v1/pods/:name`)
+  - [x] Container listing route (`GET /api/v1/nodes/:name/containers`)
   - [ ] Request validation (reject malformed flake refs, empty names, non-positive replicas)
   - [ ] Error responses with structured JSON instead of plain text
 - [x] In-memory desired state store (map of pod name -> pod definition + scheduling metadata)
@@ -25,7 +27,7 @@ These are high level tasks that need to be implemented.
 - [x] Systemd effect for machinectl operations
   - [x] Effect GADT: ListContainers, GetContainer, StartContainer, StopContainer, RebuildContainer
   - [x] Pure interpreter (nested Map) for testing
-  - [ ] Real IO interpreter: SSH + machinectl commands (IO interpreter exists but is fully stubbed)
+  - [x] Real IO interpreter: SSH + machinectl commands via `Ssh`, `NodeStore`, `Log` Member dependencies
   - [ ] Connection pooling / multiplexed SSH sessions
 - [x] NodeStore effect: register, list, get, remove nodes
   - [x] Pure interpreter (Map via State) for testing
@@ -33,6 +35,7 @@ These are high level tasks that need to be implemented.
 - [x] Ssh effect: run commands on remote nodes
   - [x] Pure interpreter (canned responses from Map) for testing
   - [x] IO interpreter (shells out to `ssh` with timeout)
+  - [x] SshConfig: configurable key file (`SYSTEMDNETES_SSH_KEY_FILE`) and username (default `systemdnetes`)
 - [x] Log effect: structured logging with levels (Debug/Info/Warn/Error)
   - [x] Pure interpreter (collects into list via State)
   - [x] IO interpreter (prints to stdout)
@@ -60,6 +63,7 @@ These are high level tasks that need to be implemented.
   - [x] WireGuard types and peer config rendering
   - [x] DNS hosts entry rendering
   - [x] Pod, Node, PodSpec, PodState types with full JSON serialization
+  - [x] Nspawn domain module: `parseMachinectlList`, `parseMachinectlState`, `renderNspawnFile`, `renderMachineSetup`
 - [x] Full effect stack composition (`App.hs`)
   - [x] `AppEffects` type alias wiring all 9 effects
   - [x] `runApp` IO interpreter stack for production
@@ -86,7 +90,7 @@ These are high level tasks that need to be implemented.
 ## Testing
 
 - [x] Property-based test suite (Hedgehog + Tasty)
-  - [x] 24 spec modules covering all effects, domain logic, API, and deploy subsystem
+  - [x] 25 spec modules covering all effects, domain logic, API, and deploy subsystem
   - [x] Pure interpreters used for all effect tests (no IO in test suite)
   - [x] JSON round-trip properties for all domain types
 
