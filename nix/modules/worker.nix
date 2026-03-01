@@ -130,6 +130,10 @@ in
     # SSH is already handled by services.openssh
     networking.firewall.allowedUDPPorts = [ cfg.wireguard.listenPort ];
 
+    # --- Deploy compose-pod.nix for nspawn container builds ---
+    environment.etc."systemdnetes/compose-pod.nix".source =
+      ../../nix-pod-builder/nix/compose-pod.nix;
+
     # --- Ensure SSH is enabled ---
     services.openssh.enable = true;
   };
