@@ -10,6 +10,7 @@ import Systemdnetes.Domain.ClusterSpec qualified as ClusterSpec
 import Systemdnetes.Domain.DnsSpec qualified as DnsSpec
 import Systemdnetes.Domain.NetworkSpec qualified as NetworkSpec
 import Systemdnetes.Domain.NodeSpec qualified as NodeSpec
+import Systemdnetes.Domain.NspawnSpec qualified as NspawnSpec
 import Systemdnetes.Domain.PodSpec qualified as PodSpec
 import Systemdnetes.Domain.ReconcileSpec qualified as ReconcileSpec
 import Systemdnetes.Domain.ResourceSpec qualified as ResourceSpec
@@ -36,6 +37,7 @@ main =
         DnsSpec.tests,
         NetworkSpec.tests,
         NodeSpec.tests,
+        NspawnSpec.tests,
         PodSpec.tests,
         ResourceSpec.tests,
         WireGuardSpec.tests,

@@ -45,6 +45,7 @@ library
     Systemdnetes.Domain.Dns
     Systemdnetes.Domain.Network
     Systemdnetes.Domain.Node
+    Systemdnetes.Domain.Nspawn
     Systemdnetes.Domain.Pod
     Systemdnetes.Domain.Reconcile
     Systemdnetes.Domain.Resource
@@ -130,6 +131,7 @@ test-suite systemdnetes-test
     Systemdnetes.Domain.DnsSpec
     Systemdnetes.Domain.NetworkSpec
     Systemdnetes.Domain.NodeSpec
+    Systemdnetes.Domain.NspawnSpec
     Systemdnetes.Domain.PodSpec
     Systemdnetes.Domain.ReconcileSpec
     Systemdnetes.Domain.ResourceSpec

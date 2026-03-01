@@ -3,6 +3,7 @@ module Systemdnetes
     module Systemdnetes.Domain.Dns,
     module Systemdnetes.Domain.Network,
     module Systemdnetes.Domain.Node,
+    module Systemdnetes.Domain.Nspawn,
     module Systemdnetes.Domain.Pod,
     module Systemdnetes.Domain.Reconcile,
     module Systemdnetes.Domain.Resource,
@@ -37,6 +38,7 @@ import Systemdnetes.Domain.Cluster
 import Systemdnetes.Domain.Dns
 import Systemdnetes.Domain.Network
 import Systemdnetes.Domain.Node
+import Systemdnetes.Domain.Nspawn
 import Systemdnetes.Domain.Pod
 import Systemdnetes.Domain.Reconcile
 import Systemdnetes.Domain.Resource
