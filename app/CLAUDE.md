@@ -1,7 +1,5 @@
-# app/ -- Executable
+# app/ -- Deploy Executable
 
-Thin wrapper that wires up the Warp server and runs the effect stack.
+Contains the deploy CLI executable (`systemdnetes-deploy`).
 
-- Port 8080 (matches Fly Machines `internal_port`)
-- All application logic lives in the library; this just calls `runApp`
-- Keep this as minimal as possible
+The main server executable has moved to `server/app/Main.hs`.

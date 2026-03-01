@@ -5,7 +5,7 @@ These are high level tasks that need to be implemented.
 ## Core Nix Library
 
 - [x] Define the pod module interface (`pod.name`, `pod.resources`, `pod.replicas`, etc.) — `nix/modules/pod.nix`, exported as `nixosModules.pod`
-- [ ] Write the wrapper module that injects platform config (WireGuard, store mounts) around a user-provided NixOS module
+- [x] Write the wrapper module that injects platform config (WireGuard, store mounts) around a user-provided NixOS module — `nix-pod-builder/nix/compose-pod.nix`
 - [x] Generate nspawn machine configs from pod definitions (nspawn settings, bind mounts for `/nix/store`, cgroup resource limits) — `Domain.Nspawn` renders `.nspawn` files and machine setup scripts
 - [ ] Build tooling: evaluate a pod's Nix expression to extract the `pod` attrset without building the full closure
 - [x] Build tooling: `nix build` the NixOS system closure for a pod, producing a switchable system profile — `RebuildContainer` runs `nix build <flakeRef>` on the worker via SSH
@@ -68,15 +68,16 @@ These are high level tasks that need to be implemented.
   - [x] `AppEffects` type alias wiring all 9 effects
   - [x] `runApp` IO interpreter stack for production
   - [x] `runAppPure` pure interpreter stack for testing
-- [ ] Resource ledger: track CPU/memory commitments per node (not just actual usage)
-- [ ] Scheduler: given a pod's resource requests and the ledger, pick a node
-- [ ] Reconciliation loop:
-  - [ ] Poll each node over SSH — enumerate running nspawn containers via `machinectl list` or `systemctl`
-  - [ ] Compare actual state against desired state (using existing `reconcilePod`)
-  - [ ] Create missing pods: push closure to node's nix store, start nspawn container, trigger `nixos-rebuild switch` inside it
+- [x] Resource ledger: track CPU/memory commitments per node — `scheduler/` package, `buildNodeResources` builds ledger from current node/pod state
+- [x] Scheduler: given a pod's resource requests and the ledger, pick a node — `scheduler/` package, best-fit algorithm in `Systemdnetes.Scheduler.Algo`
+- [x] Reconciliation loop:
+  - [x] Poll each node over SSH — enumerate running nspawn containers via `machinectl list` or `systemctl`
+  - [x] Compare actual state against desired state (using existing `reconcilePod`)
+  - [x] Create missing pods: push closure to node's nix store, start nspawn container, trigger `nixos-rebuild switch` inside it
   - [ ] Destroy pods that shouldn't exist
   - [ ] Detect pods that exist but aren't healthy (systemd unit failed, etc.)
 - [ ] Timeout-based health: if a pod doesn't converge within N seconds, mark node unhealthy for that pod and reschedule elsewhere
+- [x] Nix pod builder: compose user flakes into bootable nspawn NixOS systems — `nix-pod-builder/` package
 
 ## Deployment Tooling
 
