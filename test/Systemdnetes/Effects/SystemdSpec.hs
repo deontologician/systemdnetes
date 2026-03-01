@@ -87,7 +87,7 @@ prop_rebuildContainerSetsRunning = property $ do
   let (_, result) = run $ systemdToPure Map.empty $ do
         startContainer node pod
         stopContainer node pod
-        rebuildContainer node pod flake
+        rebuildContainer node pod flake Nothing
         getContainer node pod
   result === Just ContainerRunning
 
@@ -97,6 +97,6 @@ prop_rebuildContainerOnEmptyCreatesContainer = property $ do
   pod <- forAll genPodName
   flake <- forAll genFlakeRef
   let (_, result) = run $ systemdToPure Map.empty $ do
-        rebuildContainer node pod flake
+        rebuildContainer node pod flake Nothing
         getContainer node pod
   result === Just ContainerRunning

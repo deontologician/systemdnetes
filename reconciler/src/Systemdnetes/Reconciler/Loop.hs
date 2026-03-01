@@ -101,7 +101,7 @@ executeAction = \case
     case mPod of
       Just pod -> do
         let flakeRef = podFlakeRef (podSpec pod)
-        rebuildContainer nName pName flakeRef
+        rebuildContainer nName pName flakeRef Nothing
         setPodState pName Running
       Nothing ->
         logWarn $ "StartPod: pod " <> showPodName pName <> " not found in store"
@@ -109,7 +109,7 @@ executeAction = \case
     logInfo $ "Rebuilding " <> showPodName pName <> " on " <> showNodeName nName
     setPodState pName Rebuilding
     stopContainer nName pName
-    rebuildContainer nName pName flakeRef
+    rebuildContainer nName pName flakeRef Nothing
     setPodState pName Running
   StopPod pName nName -> do
     logInfo $ "Stopping " <> showPodName pName <> " on " <> showNodeName nName

@@ -73,7 +73,7 @@ prop_updateFlakeRefTriggersRebuild = property $ do
               let action = reconcilePod pod containerState (Just (podFlakeRef spec))
               -- 6. Execute the rebuild
               case action of
-                RebuildPod _ n flake -> rebuildContainer n name flake
+                RebuildPod _ n flake -> rebuildContainer n name flake Nothing
                 _ -> pure ()
               -- 7. Verify
               pure action
@@ -122,7 +122,7 @@ prop_rebuildPreservesNodeAssignment = property $ do
               pod <- fromJust <$> getPod name
               containerState <- getContainer node name
               case reconcilePod pod containerState (Just (podFlakeRef spec)) of
-                RebuildPod _ n flake -> rebuildContainer n name flake
+                RebuildPod _ n flake -> rebuildContainer n name flake Nothing
                 _ -> pure ()
       case Map.lookup name (pureResultStore result) of
         Just pod -> podNode pod === Just node

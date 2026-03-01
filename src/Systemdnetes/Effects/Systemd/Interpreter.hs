@@ -13,6 +13,7 @@ import Polysemy
 import Polysemy.State
 import Systemdnetes.Domain.Node (Node, NodeName (..))
 import Systemdnetes.Domain.Nspawn (parseMachinectlList, parseMachinectlState, renderMachineSetup)
+import Systemdnetes.Domain.Network (IPv4, ipToText)
 import Systemdnetes.Domain.Pod (ContainerInfo (..), ContainerState (..), FlakeRef (..), PodName (..))
 import Systemdnetes.Effects.Log (Log, logError, logInfo)
 import Systemdnetes.Effects.NodeStore (NodeStore, getNode)
@@ -44,7 +45,7 @@ systemdToPure initial =
           StopContainer node pod -> do
             modify' @SystemdState $
               Map.adjust (Map.insert pod ContainerStopped) node
-          RebuildContainer node pod _flakeRef -> do
+          RebuildContainer node pod _flakeRef _mIp -> do
             modify' @SystemdState $
               Map.alter
                 (Just . maybe (Map.singleton pod ContainerRunning) (Map.insert pod ContainerRunning))
@@ -88,11 +89,12 @@ systemdToIO = interpret $ \case
         Right _ -> pure ()
         Left err ->
           logError $ "Failed to stop " <> pod <> " on " <> showNodeName nodeName <> ": " <> err
-  RebuildContainer nodeName podName@(PodName pod) (FlakeRef flakeRef) -> do
+  RebuildContainer nodeName podName@(PodName pod) flakeRef@(FlakeRef flakeRefText) mIp -> do
     withNode nodeName () $ \node -> do
-      logInfo $ "Rebuilding container " <> pod <> " on " <> showNodeName nodeName <> " from " <> flakeRef
-      -- 1. Build the system closure on the worker
-      buildResult <- runSshCommand node ("nix build " <> flakeRef <> " --no-link --print-out-paths")
+      logInfo $ "Rebuilding container " <> pod <> " on " <> showNodeName nodeName <> " from " <> flakeRefText
+      -- 1. Build the system closure on the worker using compose-pod.nix
+      let cmd = composePodBuildCommand podName flakeRef mIp
+      buildResult <- runSshCommand node cmd
       case buildResult of
         Left err -> logError $ "Build failed for " <> pod <> ": " <> err
         Right output -> do
@@ -136,3 +138,27 @@ showNodeName (NodeName n) = n
 -- | Shell-quote a text value for use in @bash -c '...'@.
 quote :: Text -> Text
 quote t = "'" <> T.replace "'" "'\"'\"'" t <> "'"
+
+-- | Build the @nix build@ command that wraps a user flake through compose-pod.nix.
+-- Uses @--impure@ because compose-pod.nix imports the user flake at eval time.
+composePodBuildCommand :: PodName -> FlakeRef -> Maybe IPv4 -> Text
+composePodBuildCommand (PodName name) (FlakeRef flake) mIp =
+  "nix build --impure --no-link --print-out-paths --expr "
+    <> quote nixExpr
+  where
+    nixExpr =
+      "(import /etc/systemdnetes/compose-pod.nix { userFlakeRef = "
+        <> nixString flake
+        <> "; podName = "
+        <> nixString name
+        <> ";"
+        <> ipArg
+        <> " }).config.system.build.toplevel"
+    ipArg = case mIp of
+      Nothing -> ""
+      Just ip -> " podIp = " <> nixString (ipToText ip) <> ";"
+    nixString t = "\"" <> T.concatMap escapeNix t <> "\""
+    escapeNix '\\' = "\\\\"
+    escapeNix '"' = "\\\""
+    escapeNix '$' = "\\$"
+    escapeNix c = T.singleton c
