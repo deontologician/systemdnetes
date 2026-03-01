@@ -28,105 +28,189 @@
           mkdir -p $out/static
           cp ${./static}/* $out/static/
         '';
-        # Minimal passwd/group with root home set to /root (not /var/empty)
-        passwdFile = pkgs.runCommand "passwd" { } ''
-          mkdir -p $out/etc
-          echo 'root:x:0:0:root:/root:/bin/bash' > $out/etc/passwd
-          echo 'root:x:0:' > $out/etc/group
-          echo 'sshd:x:22:22:sshd privsep:/var/empty:/bin/false' >> $out/etc/passwd
-          echo 'nobody:x:65534:65534:nobody:/nonexistent:/bin/false' >> $out/etc/passwd
-          echo 'sshd:x:22:' >> $out/etc/group
-          echo 'nogroup:x:65534:' >> $out/etc/group
+
+        # --- NixOS system configurations for OCI images ---
+
+        orchestratorSystem = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            "${nixpkgs}/nixos/modules/virtualisation/docker-image.nix"
+            "${nixpkgs}/nixos/modules/profiles/minimal.nix"
+            self.nixosModules.orchestrator
+            ({ pkgs, lib, ... }: {
+              services.systemdnetes.orchestrator = {
+                enable = true;
+                package = systemdnetes;
+                sshKeyFile = "/run/secrets/ssh-key";
+                wireguard = {
+                  privateKeyFile = "/run/secrets/wireguard-key";
+                  address = "10.100.0.1/24";
+                };
+                workers = [];
+              };
+
+              # Static files for the web server binary
+              systemd.services.systemdnetes.serviceConfig.WorkingDirectory =
+                "${staticFiles}";
+
+              # Avoid /init conflict with Fly.io's init
+              system.activationScripts.installInitScript = lib.mkForce "";
+
+              system.stateVersion = "24.11";
+            })
+          ];
+        };
+
+        workerSystem = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            "${nixpkgs}/nixos/modules/virtualisation/docker-image.nix"
+            "${nixpkgs}/nixos/modules/profiles/minimal.nix"
+            self.nixosModules.worker
+            ({ pkgs, lib, ... }: {
+              services.systemdnetes.worker = {
+                enable = true;
+                orchestratorAddress = "orchestrator";
+                orchestratorWireguardAddress = "10.100.0.1";
+                # Placeholder — rebuild with real key when deploying
+                orchestratorWireguardPublicKey =
+                  "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+                orchestratorWireguardEndpoint = "orchestrator:51820";
+                wireguard = {
+                  privateKeyFile = "/run/secrets/wireguard-key";
+                  address = "10.100.1.1/24";
+                };
+                ssh.authorizedKeys = [];
+              };
+
+              # Inject SSH authorized keys at runtime before sshd starts.
+              # The entrypoint writes env vars to /run/secrets/authorized-keys;
+              # this service copies them to the NixOS-managed sshd keys path.
+              systemd.services.inject-ssh-keys = {
+                description = "Inject SSH authorized keys from runtime secrets";
+                wantedBy = [ "sshd.service" ];
+                before = [ "sshd.service" ];
+                after = [ "local-fs.target" ];
+                serviceConfig = {
+                  Type = "oneshot";
+                  RemainAfterExit = true;
+                };
+                script = ''
+                  if [ -f /run/secrets/authorized-keys ]; then
+                    mkdir -p /etc/ssh/authorized_keys.d
+                    rm -f /etc/ssh/authorized_keys.d/systemdnetes
+                    cp /run/secrets/authorized-keys /etc/ssh/authorized_keys.d/systemdnetes
+                    chmod 644 /etc/ssh/authorized_keys.d/systemdnetes
+                  fi
+                '';
+              };
+
+              # Avoid /init conflict with Fly.io's init
+              system.activationScripts.installInitScript = lib.mkForce "";
+
+              system.stateVersion = "24.11";
+            })
+          ];
+        };
+
+        # --- Entrypoint scripts ---
+        # These run before systemd: inject runtime secrets from env vars,
+        # then start NixOS init inside a PID namespace (for Fly.io compat).
+
+        orchestratorEntrypoint = pkgs.writeShellScript "start-orchestrator" ''
+          set -euo pipefail
+
+          mkdir -p /run/secrets
+          if [ -n "''${SSH_PRIVATE_KEY:-}" ]; then
+            printf '%s\n' "$SSH_PRIVATE_KEY" > /run/secrets/ssh-key
+            chmod 600 /run/secrets/ssh-key
+          fi
+          if [ -n "''${WG_PRIVATE_KEY:-}" ]; then
+            printf '%s\n' "$WG_PRIVATE_KEY" > /run/secrets/wireguard-key
+            chmod 600 /run/secrets/wireguard-key
+          fi
+
+          exec ${pkgs.util-linux}/bin/unshare \
+            --pid --fork --mount-proc \
+            ${orchestratorSystem.config.system.build.toplevel}/init
         '';
+
+        workerEntrypoint = pkgs.writeShellScript "start-worker" ''
+          set -euo pipefail
+
+          mkdir -p /run/secrets
+          if [ -n "''${SSH_AUTHORIZED_KEYS:-}" ]; then
+            printf '%s\n' "$SSH_AUTHORIZED_KEYS" > /run/secrets/authorized-keys
+            chmod 644 /run/secrets/authorized-keys
+          fi
+          if [ -n "''${WG_PRIVATE_KEY:-}" ]; then
+            printf '%s\n' "$WG_PRIVATE_KEY" > /run/secrets/wireguard-key
+            chmod 600 /run/secrets/wireguard-key
+          fi
+
+          exec ${pkgs.util-linux}/bin/unshare \
+            --pid --fork --mount-proc \
+            ${workerSystem.config.system.build.toplevel}/init
+        '';
+
+        # --- Build rootfs: NixOS system tarball + entrypoint closure ---
+
+        mkRootfs = { name, systemCfg, entrypoint }:
+          let
+            tarball = systemCfg.config.system.build.tarball;
+            entrypointClosure = pkgs.closureInfo {
+              rootPaths = [ entrypoint ];
+            };
+          in
+          pkgs.runCommand "${name}-rootfs" { } ''
+            mkdir -p $out
+            tar xf ${tarball}/tarball/nixos-system-*.tar.xz -C $out
+
+            # Add entrypoint script and its closure to the rootfs nix store
+            while IFS= read -r storePath; do
+              if [ ! -e "$out$storePath" ]; then
+                cp -a "$storePath" "$out$storePath"
+              fi
+            done < ${entrypointClosure}/store-paths
+          '';
+
+        orchestratorRootfs = mkRootfs {
+          name = "orchestrator";
+          systemCfg = orchestratorSystem;
+          entrypoint = orchestratorEntrypoint;
+        };
+
+        workerRootfs = mkRootfs {
+          name = "worker";
+          systemCfg = workerSystem;
+          entrypoint = workerEntrypoint;
+        };
       in
       {
         packages = {
           default = systemdnetes;
 
-          # Orchestrator: API server + SSH client for health checks
+          # Orchestrator: full NixOS system with systemd, API server,
+          # dnsmasq, WireGuard, and SSH client
           container = pkgs.dockerTools.buildImage {
             name = "systemdnetes";
             tag = "latest";
-            copyToRoot = pkgs.buildEnv {
-              name = "orchestrator-root";
-              paths = [
-                pkgs.openssh    # ssh client for health checks
-                pkgs.coreutils  # mkdir, chmod
-                pkgs.bash
-                staticFiles
-                passwdFile
-              ];
-              pathsToLink = [ "/bin" "/etc" "/static" ];
-            };
+            copyToRoot = orchestratorRootfs;
             config = {
-              Env = [ "PATH=/bin" ];
-              Entrypoint = [
-                "${pkgs.bash}/bin/bash" "-c" ''
-                  set -euo pipefail
-                  mkdir -p /root/.ssh && chmod 700 /root/.ssh
-                  if [ -n "''${SSH_PRIVATE_KEY:-}" ]; then
-                    printf '%s\n' "$SSH_PRIVATE_KEY" > /root/.ssh/id_ed25519
-                    chmod 600 /root/.ssh/id_ed25519
-                  fi
-                  exec ${pkgs.lib.getBin systemdnetes}/bin/systemdnetes
-                ''
-              ];
-              WorkingDir = "/";
-              ExposedPorts = { "8080/tcp" = { }; };
+              Entrypoint = [ "${orchestratorEntrypoint}" ];
             };
           };
 
-          # Worker: sshd + health script (no systemdnetes binary)
-          worker =
-            let
-              healthScript = pkgs.writeShellScriptBin "systemdnetes-health" ''
-                set -euo pipefail
-                UPTIME=$(cat /proc/uptime | ${pkgs.coreutils}/bin/cut -d' ' -f1)
-                LOAD=$(cat /proc/loadavg | ${pkgs.coreutils}/bin/cut -d' ' -f1-3)
-                MEM_TOTAL=$(${pkgs.gawk}/bin/awk '/MemTotal/ {print $2}' /proc/meminfo)
-                MEM_AVAIL=$(${pkgs.gawk}/bin/awk '/MemAvailable/ {print $2}' /proc/meminfo)
-                printf '{"uptime":"%s","load":"%s","memTotalKb":"%s","memAvailKb":"%s"}\n' \
-                  "$UPTIME" "$LOAD" "$MEM_TOTAL" "$MEM_AVAIL"
-              '';
-            in
-            pkgs.dockerTools.buildImage {
-              name = "systemdnetes-worker";
-              tag = "latest";
-              copyToRoot = pkgs.buildEnv {
-                name = "worker-root";
-                paths = [
-                  pkgs.openssh
-                  pkgs.coreutils
-                  pkgs.gawk
-                  pkgs.bash
-                  healthScript
-                  passwdFile
-                ];
-                pathsToLink = [ "/bin" "/etc" ];
-              };
-              config = {
-                Env = [ "PATH=/bin" ];
-                Entrypoint = [
-                  "${pkgs.bash}/bin/bash" "-c" ''
-                    set -euo pipefail
-                    mkdir -p /var/empty
-                    mkdir -p /root/.ssh && chmod 700 /root/.ssh
-                    if [ -n "''${SSH_AUTHORIZED_KEYS:-}" ]; then
-                      printf '%s\n' "$SSH_AUTHORIZED_KEYS" > /root/.ssh/authorized_keys
-                      chmod 600 /root/.ssh/authorized_keys
-                    fi
-                    # Generate host keys if missing
-                    mkdir -p /etc/ssh
-                    for t in rsa ed25519; do
-                      [ -f "/etc/ssh/ssh_host_''${t}_key" ] || \
-                        ${pkgs.openssh}/bin/ssh-keygen -t "$t" -f "/etc/ssh/ssh_host_''${t}_key" -N ""
-                    done
-                    exec ${pkgs.openssh}/bin/sshd -D -e
-                  ''
-                ];
-                ExposedPorts = { "22/tcp" = { }; };
-              };
+          # Worker: full NixOS system with systemd, sshd, dnsmasq,
+          # WireGuard, and systemd-nspawn support
+          worker = pkgs.dockerTools.buildImage {
+            name = "systemdnetes-worker";
+            tag = "latest";
+            copyToRoot = workerRootfs;
+            config = {
+              Entrypoint = [ "${workerEntrypoint}" ];
             };
+          };
         };
 
         devShells.default = haskellPackages.shellFor {

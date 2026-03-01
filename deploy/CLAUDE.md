@@ -2,21 +2,21 @@
 
 3 Fly Machines: 1 orchestrator (API server + SSH client), 2 workers (sshd + health script).
 
+Images are full NixOS systems with systemd as init, dnsmasq, WireGuard, and SSH — all configured through `nixosModules.orchestrator` and `nixosModules.worker`. An entrypoint wrapper injects runtime secrets from env vars and starts systemd inside a PID namespace (`unshare --pid`) for Fly.io compatibility.
+
 ## Architecture
 
-- **Orchestrator**: runs the systemdnetes binary, SSHes to workers for health checks
-- **Workers**: plain machines with sshd, accept SSH from orchestrator, run `systemdnetes-health` script
-
-Communication uses Fly private networking (6PN / `fdaa::` addresses).
+- **Orchestrator**: NixOS system running systemdnetes binary, dnsmasq (authoritative pod DNS), WireGuard overlay, SSH client for worker health checks
+- **Workers**: NixOS system running sshd, dnsmasq (DNS cache forwarding to orchestrator), WireGuard overlay, systemd-nspawn for container management
 
 ## Build Images
 
 ```bash
-# Orchestrator (API server + openssh client)
+# Orchestrator (full NixOS system)
 nix build .#container
 # result -> OCI tar.gz
 
-# Worker (sshd + health script)
+# Worker (full NixOS system)
 nix build .#worker
 # result -> OCI tar.gz
 ```
@@ -73,25 +73,38 @@ fly machine run registry.fly.io/systemdnetes:worker \
 ssh-keygen -t ed25519 -f /tmp/systemdnetes-key -N ""
 ```
 
-### Set orchestrator secret
+### Generate WireGuard keys (one-time)
 
 ```bash
-fly secrets set SSH_PRIVATE_KEY="$(cat /tmp/systemdnetes-key)" --app systemdnetes
+wg genkey | tee /tmp/wg-orchestrator-private | wg pubkey > /tmp/wg-orchestrator-public
+wg genkey | tee /tmp/wg-worker-private | wg pubkey > /tmp/wg-worker-public
+```
+
+### Set orchestrator secrets
+
+```bash
+fly secrets set \
+  SSH_PRIVATE_KEY="$(cat /tmp/systemdnetes-key)" \
+  WG_PRIVATE_KEY="$(cat /tmp/wg-orchestrator-private)" \
+  --app systemdnetes
 ```
 
 ### Set worker secrets
 
-Workers need the public key. Set via `fly machine update`:
+Workers need the SSH public key and their WireGuard private key. Set via `fly machine update`:
 
 ```bash
 PUB_KEY=$(cat /tmp/systemdnetes-key.pub)
+WG_KEY=$(cat /tmp/wg-worker-private)
 
 fly machine update <worker-1-id> \
   --env SSH_AUTHORIZED_KEYS="$PUB_KEY" \
+  --env WG_PRIVATE_KEY="$WG_KEY" \
   --app systemdnetes
 
 fly machine update <worker-2-id> \
   --env SSH_AUTHORIZED_KEYS="$PUB_KEY" \
+  --env WG_PRIVATE_KEY="$WG_KEY" \
   --app systemdnetes
 ```
 
@@ -131,6 +144,17 @@ curl "$API/api/v1/nodes/worker-1"
 - Internal port: 8080
 - Auto-stop off (orchestrator must stay running for health checks)
 - Health check: `GET /healthz`
+
+## NixOS Image Configuration
+
+WireGuard addresses, peers, and network config are hardcoded at build time in `flake.nix`. To add workers or change network topology, update the NixOS system configs and rebuild. Runtime secrets (SSH keys, WireGuard private keys) are injected from Fly.io env vars by the entrypoint script.
+
+Key env vars:
+- `SSH_PRIVATE_KEY` — orchestrator's SSH private key for reaching workers
+- `SSH_AUTHORIZED_KEYS` — worker's SSH authorized keys (orchestrator's public key)
+- `WG_PRIVATE_KEY` — WireGuard private key (both orchestrator and workers)
+
+These are written to `/run/secrets/` by the entrypoint before systemd starts.
 
 ## Automated Deploy (systemdnetes-deploy)
 
