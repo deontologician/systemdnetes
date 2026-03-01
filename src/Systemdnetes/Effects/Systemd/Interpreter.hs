@@ -7,10 +7,16 @@ where
 
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Text (Text)
+import Data.Text qualified as T
 import Polysemy
 import Polysemy.State
-import Systemdnetes.Domain.Node (NodeName)
-import Systemdnetes.Domain.Pod (ContainerInfo (..), ContainerState (..), PodName)
+import Systemdnetes.Domain.Node (Node, NodeName (..))
+import Systemdnetes.Domain.Nspawn (parseMachinectlList, parseMachinectlState, renderMachineSetup)
+import Systemdnetes.Domain.Pod (ContainerInfo (..), ContainerState (..), FlakeRef (..), PodName (..))
+import Systemdnetes.Effects.Log (Log, logError, logInfo)
+import Systemdnetes.Effects.NodeStore (NodeStore, getNode)
+import Systemdnetes.Effects.Ssh (Ssh, runSshCommand)
 import Systemdnetes.Effects.Systemd
 
 type SystemdState = Map NodeName (Map PodName ContainerState)
@@ -45,12 +51,88 @@ systemdToPure initial =
                 node
       )
 
--- | Stubbed IO interpreter. Returns empty results / no-ops.
--- Real machinectl + SSH integration comes later.
-systemdToIO :: (Member (Embed IO) r) => Sem (Systemd ': r) a -> Sem r a
+-- | IO interpreter: uses SSH + machinectl to manage nspawn containers on
+-- worker nodes. Requires Ssh, NodeStore, and Log in the remaining stack.
+systemdToIO ::
+  (Member Ssh r, Member NodeStore r, Member Log r) =>
+  Sem (Systemd ': r) a ->
+  Sem r a
 systemdToIO = interpret $ \case
-  ListContainers _ -> pure []
-  GetContainer _ _ -> pure Nothing
-  StartContainer _ _ -> pure ()
-  StopContainer _ _ -> pure ()
-  RebuildContainer {} -> pure ()
+  ListContainers nodeName -> do
+    withNode nodeName [] $ \node -> do
+      result <- runSshCommand node "sudo machinectl list --no-legend --no-pager"
+      case result of
+        Right output -> pure $ parseMachinectlList output
+        Left err -> do
+          logError $ "Failed to list containers on " <> showNodeName nodeName <> ": " <> err
+          pure []
+  GetContainer nodeName (PodName pod) -> do
+    withNode nodeName Nothing $ \node -> do
+      result <- runSshCommand node ("sudo machinectl show " <> pod <> " --property=State --value")
+      case result of
+        Right output -> pure $ parseMachinectlState output
+        Left _ -> pure Nothing
+  StartContainer nodeName (PodName pod) -> do
+    withNode nodeName () $ \node -> do
+      logInfo $ "Starting container " <> pod <> " on " <> showNodeName nodeName
+      result <- runSshCommand node ("sudo machinectl start " <> pod)
+      case result of
+        Right _ -> pure ()
+        Left err ->
+          logError $ "Failed to start " <> pod <> " on " <> showNodeName nodeName <> ": " <> err
+  StopContainer nodeName (PodName pod) -> do
+    withNode nodeName () $ \node -> do
+      logInfo $ "Stopping container " <> pod <> " on " <> showNodeName nodeName
+      result <- runSshCommand node ("sudo machinectl stop " <> pod)
+      case result of
+        Right _ -> pure ()
+        Left err ->
+          logError $ "Failed to stop " <> pod <> " on " <> showNodeName nodeName <> ": " <> err
+  RebuildContainer nodeName podName@(PodName pod) (FlakeRef flakeRef) -> do
+    withNode nodeName () $ \node -> do
+      logInfo $ "Rebuilding container " <> pod <> " on " <> showNodeName nodeName <> " from " <> flakeRef
+      -- 1. Build the system closure on the worker
+      buildResult <- runSshCommand node ("nix build " <> flakeRef <> " --no-link --print-out-paths")
+      case buildResult of
+        Left err -> logError $ "Build failed for " <> pod <> ": " <> err
+        Right output -> do
+          let systemPath = T.strip output
+          -- 2. Set up machine rootfs and .nspawn file
+          let setupScript = renderMachineSetup podName systemPath
+          setupResult <- runSshCommand node ("bash -c " <> quote setupScript)
+          case setupResult of
+            Left err -> logError $ "Machine setup failed for " <> pod <> ": " <> err
+            Right _ -> do
+              -- 3. Stop if already running, then start
+              stateResult <- runSshCommand node ("sudo machinectl show " <> pod <> " --property=State --value 2>/dev/null")
+              case stateResult of
+                Right st | T.strip st == "running" -> do
+                  _ <- runSshCommand node ("sudo machinectl stop " <> pod)
+                  pure ()
+                _ -> pure ()
+              startResult <- runSshCommand node ("sudo machinectl start " <> pod)
+              case startResult of
+                Right _ -> logInfo $ "Container " <> pod <> " started on " <> showNodeName nodeName
+                Left err -> logError $ "Failed to start " <> pod <> " after rebuild: " <> err
+
+-- | Look up a node by name; if not found, log an error and return the default.
+withNode ::
+  (Member NodeStore r, Member Log r) =>
+  NodeName ->
+  a ->
+  (Node -> Sem r a) ->
+  Sem r a
+withNode nodeName def action = do
+  nodeResult <- getNode nodeName
+  case nodeResult of
+    Just node -> action node
+    Nothing -> do
+      logError $ "Node not found: " <> showNodeName nodeName
+      pure def
+
+showNodeName :: NodeName -> Text
+showNodeName (NodeName n) = n
+
+-- | Shell-quote a text value for use in @bash -c '...'@.
+quote :: Text -> Text
+quote t = "'" <> T.replace "'" "'\"'\"'" t <> "'"

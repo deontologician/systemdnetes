@@ -37,13 +37,13 @@ import Systemdnetes.Effects.WireGuardControl
 import Systemdnetes.Effects.WireGuardControl.Interpreter
 
 type AppEffects =
-  '[ Log,
-     Store,
-     NodeStore,
+  '[ Store,
+     Systemd,
      IpAllocator,
      WireGuardControl,
      DnsRegistry,
-     Systemd,
+     NodeStore,
+     Log,
      Ssh,
      FileServer,
      Embed IO,
@@ -64,13 +64,13 @@ runApp sshCfg podStore nodeStore allocatorState wgIface hostsDir =
     . embedToFinal
     . fileServerToIO
     . sshToIO sshCfg
-    . systemdToIO
+    . logToIO
+    . nodeStoreToIO nodeStore
     . dnsRegistryToIO hostsDir
     . wireGuardControlToIO wgIface
     . ipAllocatorToIO allocatorState
-    . nodeStoreToIO nodeStore
+    . systemdToIO
     . storeToIO podStore
-    . logToIO
 
 -- | Configuration for the pure interpreter stack, mirroring 'runApp'.
 data PureAppConfig = PureAppConfig
@@ -114,22 +114,22 @@ data PureResult a = PureResult
 -- (minus @Embed IO@ / @Final IO@) using in-memory state.
 runAppPure ::
   PureAppConfig ->
-  Sem '[Log, Store, NodeStore, IpAllocator, WireGuardControl, DnsRegistry, Systemd, Ssh, FileServer] a ->
+  Sem '[Store, Systemd, IpAllocator, WireGuardControl, DnsRegistry, NodeStore, Log, Ssh, FileServer] a ->
   PureResult a
 runAppPure cfg =
   toPureResult
     . run
     . fileServerToPure (pureFiles cfg)
     . sshToPure (pureSshResponses cfg)
-    . systemdToPure (pureSystemdState cfg)
+    . logToList
+    . nodeStoreToPure (pureNodeStoreState cfg)
     . dnsRegistryToPure (pureDnsRegistryState cfg)
     . wireGuardControlToPure
     . ipAllocatorToPure (pureIpAllocatorState cfg)
-    . nodeStoreToPure (pureNodeStoreState cfg)
+    . systemdToPure (pureSystemdState cfg)
     . storeToPure (pureStoreState cfg)
-    . logToList
   where
-    toPureResult (systemd, (dns, (wg, (ipAlloc, (nodeStore, (store, (logs, a))))))) =
+    toPureResult (logs, (nodeStore, (dns, (wg, (ipAlloc, (systemd, (store, a))))))) =
       PureResult
         { pureResultLogs = logs,
           pureResultStore = store,
