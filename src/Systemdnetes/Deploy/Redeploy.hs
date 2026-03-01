@@ -31,7 +31,7 @@ redeploy cfg = runEither $ do
       apiBase = "https://" <> appName <> ".fly.dev"
 
   -- 1. Check prerequisites
-  liftE $ checkPrereqs
+  liftE checkPrereqs
 
   -- 2. Build + push both images
   liftE $ nixBuild ".#container" "result-container"
