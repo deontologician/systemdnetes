@@ -1,7 +1,6 @@
 module Systemdnetes.Domain.ClusterSpec (tests) where
 
 import Data.Text (Text)
-import Data.Word (Word32)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
@@ -114,5 +113,6 @@ prop_podViewPreservesIp = property $ do
   pod <- forAll $ genPodWithNetwork (Just (nodeName node)) (Just netInfo)
   let cs = buildClusterState [node] [pod]
       podViews = concatMap nvPods (csNodes cs)
-  length podViews === 1
-  pvIp (head podViews) === Just (ipToText (netIp netInfo))
+  case podViews of
+    [pv] -> pvIp pv === Just (ipToText (netIp netInfo))
+    _ -> failure
