@@ -17,10 +17,10 @@ import Systemdnetes.Domain.Pod (ContainerInfo (..), ContainerState (..), PodName
 parseMachinectlList :: Text -> [ContainerInfo]
 parseMachinectlList raw =
   [ ContainerInfo (PodName name) state
-    | line <- T.lines raw,
-      not (T.null (T.strip line)),
-      (name : stateCol : _) <- [T.words line],
-      Just state <- [parseState stateCol]
+  | line <- T.lines raw,
+    not (T.null (T.strip line)),
+    (name : stateCol : _) <- [T.words line],
+    Just state <- [parseState stateCol]
   ]
 
 -- | Parse a single state value from @machinectl show --property=State --value@.

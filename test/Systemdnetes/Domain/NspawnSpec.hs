@@ -74,16 +74,19 @@ prop_parseListSkipsBlanks = property $ do
   length (parseMachinectlList input) === 1
 
 prop_parseStateRunning :: Property
-prop_parseStateRunning = property $
-  parseMachinectlState "running" === Just ContainerRunning
+prop_parseStateRunning =
+  property $
+    parseMachinectlState "running" === Just ContainerRunning
 
 prop_parseStateStopped :: Property
-prop_parseStateStopped = property $
-  parseMachinectlState "stopped" === Just ContainerStopped
+prop_parseStateStopped =
+  property $
+    parseMachinectlState "stopped" === Just ContainerStopped
 
 prop_parseStateFailed :: Property
-prop_parseStateFailed = property $
-  parseMachinectlState "failed" === Just ContainerFailed
+prop_parseStateFailed =
+  property $
+    parseMachinectlState "failed" === Just ContainerFailed
 
 prop_parseStateUnknown :: Property
 prop_parseStateUnknown = property $ do
@@ -91,8 +94,9 @@ prop_parseStateUnknown = property $ do
   parseMachinectlState txt === Nothing
 
 prop_parseStateStrips :: Property
-prop_parseStateStrips = property $
-  parseMachinectlState "  running  \n" === Just ContainerRunning
+prop_parseStateStrips =
+  property $
+    parseMachinectlState "  running  \n" === Just ContainerRunning
 
 prop_nspawnBoot :: Property
 prop_nspawnBoot = property $ do
