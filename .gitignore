@@ -13,4 +13,5 @@ result-*
 cabal.project.local
 cabal.project.local~
 .ghc.environment.*
+deploy/.ssh/
 .claude/worktrees

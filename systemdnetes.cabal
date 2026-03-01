@@ -106,6 +106,14 @@ executable systemdnetes
     , wai
     , warp
 
+executable systemdnetes-deploy
+  import:          shared
+  hs-source-dirs:  app/Deploy
+  main-is:         Main.hs
+  build-depends:
+    , systemdnetes
+    , text
+
 test-suite systemdnetes-test
   import:          shared
   type:            exitcode-stdio-1.0

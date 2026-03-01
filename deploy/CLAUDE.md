@@ -120,6 +120,46 @@ curl "$API/api/v1/nodes/worker-1"
 - Auto-stop off (orchestrator must stay running for health checks)
 - Health check: `GET /healthz`
 
+## Automated Deploy (systemdnetes-deploy)
+
+The `systemdnetes-deploy` executable automates the full deploy pipeline.
+
+### First-time bootstrap
+
+```bash
+cabal run systemdnetes-deploy -- bootstrap
+```
+
+This will:
+1. Check prerequisites (fly, skopeo, nix)
+2. Create the Fly app if needed
+3. Build orchestrator and worker OCI images
+4. Push images to registry.fly.io
+5. Generate SSH keypair in `deploy/.ssh/`
+6. Set `SSH_PRIVATE_KEY` secret on Fly
+7. Deploy orchestrator via `fly deploy`
+8. Poll `/healthz` until healthy
+9. Create worker machines with SSH public key
+10. Register workers as nodes via the API
+
+### Redeploy (update existing)
+
+```bash
+cabal run systemdnetes-deploy -- redeploy
+```
+
+This will rebuild images, push, `fly deploy`, update worker machines,
+and re-register nodes (node store is in-memory, lost on restart).
+
+### Environment variables
+
+- `NUM_WORKERS` -- number of worker machines (default: 2)
+
+### SSH keys
+
+SSH keys are stored in `deploy/.ssh/` (gitignored). Bootstrap creates
+them automatically if they don't exist.
+
 ## Updating Workers
 
 ```bash
