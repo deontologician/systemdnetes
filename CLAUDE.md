@@ -71,5 +71,9 @@ Write descriptive commit messages: summary line says *what*, body says *why* and
 
 Fly Machines via Nix-built OCI image. See `deploy/CLAUDE.md`.
 
+## Task tracking
+
+Keep `TODO.md` up to date with any plans you are working on. When entering plan mode, link to the plan file from `TODO.md` under a `## Current Plan` section and keep the status in sync as work progresses. Mark items complete in `TODO.md` as they are finished, and remove the current plan link once the plan is fully implemented.
+
 ## CLAUDE doc structure
 Add a CLAUDE.md in each directory explaining at a high level what the files contain to help with navigation. Additionally, if there are operational instructions necessary in that directory (like a tool or cli invocations needed) explain them there with examples.
