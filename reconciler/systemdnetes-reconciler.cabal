@@ -1,0 +1,63 @@
+cabal-version:   3.0
+name:            systemdnetes-reconciler
+version:         0.1.0.0
+synopsis:        Reconciliation loop for systemdnetes pod lifecycle
+build-type:      Simple
+
+common shared
+  default-language: GHC2021
+  default-extensions:
+    DataKinds
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingStrategies
+    FlexibleContexts
+    GADTs
+    LambdaCase
+    OverloadedStrings
+    PolyKinds
+    RankNTypes
+    ScopedTypeVariables
+    TemplateHaskell
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+  ghc-options:
+    -Wall
+    -Wcompat
+    -O2
+    -flate-specialise
+    -fspecialise-aggressively
+    -fplugin=Polysemy.Plugin
+  build-depends:
+    , base           >=4.17 && <5
+    , polysemy       >=1.9
+    , polysemy-plugin
+
+library
+  import:          shared
+  hs-source-dirs:  src
+  exposed-modules:
+    Systemdnetes.Reconciler
+    Systemdnetes.Reconciler.Loop
+  build-depends:
+    , systemdnetes
+    , systemdnetes-scheduler
+    , text
+
+test-suite systemdnetes-reconciler-test
+  import:          shared
+  type:            exitcode-stdio-1.0
+  hs-source-dirs:  test
+  main-is:         Main.hs
+  other-modules:
+    Systemdnetes.Reconciler.LoopSpec
+  build-depends:
+    , containers
+    , hedgehog
+    , systemdnetes
+    , systemdnetes-reconciler
+    , systemdnetes-scheduler
+    , tasty
+    , tasty-hedgehog
+    , text

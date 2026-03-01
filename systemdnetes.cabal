@@ -95,18 +95,6 @@ library
     , time
     , wai
 
-executable systemdnetes
-  import:          shared
-  hs-source-dirs:  app
-  main-is:         Main.hs
-  build-depends:
-    , containers
-    , stm
-    , systemdnetes
-    , text
-    , wai
-    , warp
-
 executable systemdnetes-deploy
   import:          shared
   hs-source-dirs:  app/Deploy

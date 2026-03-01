@@ -1,0 +1,48 @@
+cabal-version:   3.0
+name:            systemdnetes-server
+version:         0.1.0.0
+synopsis:        systemdnetes API server executable
+build-type:      Simple
+
+common shared
+  default-language: GHC2021
+  default-extensions:
+    DataKinds
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingStrategies
+    FlexibleContexts
+    GADTs
+    LambdaCase
+    OverloadedStrings
+    PolyKinds
+    RankNTypes
+    ScopedTypeVariables
+    TemplateHaskell
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+  ghc-options:
+    -Wall
+    -Wcompat
+    -O2
+    -flate-specialise
+    -fspecialise-aggressively
+    -fplugin=Polysemy.Plugin
+  build-depends:
+    , base           >=4.17 && <5
+    , polysemy       >=1.9
+    , polysemy-plugin
+
+executable systemdnetes
+  import:          shared
+  hs-source-dirs:  app
+  main-is:         Main.hs
+  build-depends:
+    , containers
+    , stm
+    , systemdnetes
+    , systemdnetes-reconciler
+    , text
+    , wai
+    , warp

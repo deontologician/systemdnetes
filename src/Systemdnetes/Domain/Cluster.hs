@@ -12,8 +12,9 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Systemdnetes.Domain.Network (ipToText)
 import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..))
-import Systemdnetes.Domain.Pod (Pod (..), PodName (..), PodSpec (..), PodState (..), ResourceRequests (..))
+import Systemdnetes.Domain.Pod (NetworkInfo (..), Pod (..), PodName (..), PodSpec (..), PodState (..), ResourceRequests (..))
 import Systemdnetes.Domain.Resource
 
 data PodView = PodView
@@ -21,7 +22,8 @@ data PodView = PodView
     pvState :: PodState,
     pvCpu :: Millicores,
     pvMemory :: Mebibytes,
-    pvReplicas :: Int
+    pvReplicas :: Int,
+    pvIp :: Maybe Text
   }
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON)
@@ -102,7 +104,8 @@ toPodView pod =
           pvState = podState pod,
           pvCpu = cpuVal,
           pvMemory = memVal,
-          pvReplicas = podReplicas spec
+          pvReplicas = podReplicas spec,
+          pvIp = ipToText . netIp <$> podNetwork pod
         }
 
 sumUsage :: [PodView] -> NodeCapacity

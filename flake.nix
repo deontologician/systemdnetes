@@ -22,9 +22,14 @@
         haskellPackages = pkgs.haskellPackages.override {
           overrides = hself: hsuper: {
             systemdnetes = hself.callCabal2nix "systemdnetes" ./. { };
+            systemdnetes-scheduler = hself.callCabal2nix "systemdnetes-scheduler" ./scheduler { };
+            systemdnetes-reconciler = hself.callCabal2nix "systemdnetes-reconciler" ./reconciler { };
+            systemdnetes-nix-pod-builder = hself.callCabal2nix "systemdnetes-nix-pod-builder" ./nix-pod-builder { };
+            systemdnetes-server = hself.callCabal2nix "systemdnetes-server" ./server { };
           };
         };
         systemdnetes = haskellPackages.systemdnetes;
+        systemdnetes-server = haskellPackages.systemdnetes-server;
         staticFiles = pkgs.runCommand "systemdnetes-static" { } ''
           mkdir -p $out/static
           cp ${./static}/* $out/static/
@@ -41,7 +46,7 @@
             ({ pkgs, lib, ... }: {
               services.systemdnetes.orchestrator = {
                 enable = true;
-                package = systemdnetes;
+                package = systemdnetes-server;
                 sshKeyFile = "/run/secrets/ssh-key";
                 wireguard = {
                   privateKeyFile = "/run/secrets/wireguard-key";
@@ -215,7 +220,13 @@
         };
 
         devShells.default = haskellPackages.shellFor {
-          packages = p: [ p.systemdnetes ];
+          packages = p: [
+            p.systemdnetes
+            p.systemdnetes-scheduler
+            p.systemdnetes-reconciler
+            p.systemdnetes-nix-pod-builder
+            p.systemdnetes-server
+          ];
           nativeBuildInputs = [
             pkgs.cabal-install
             pkgs.haskellPackages.haskell-language-server

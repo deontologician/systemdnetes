@@ -1,0 +1,49 @@
+cabal-version:   3.0
+name:            systemdnetes-nix-pod-builder
+version:         0.1.0.0
+synopsis:        Nix build command generation for systemdnetes pods
+build-type:      Simple
+
+common shared
+  default-language: GHC2021
+  default-extensions:
+    DataKinds
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingStrategies
+    FlexibleContexts
+    GADTs
+    LambdaCase
+    OverloadedStrings
+    ScopedTypeVariables
+  ghc-options:
+    -Wall
+    -Wcompat
+    -O2
+
+library
+  import:          shared
+  hs-source-dirs:  src
+  exposed-modules:
+    Systemdnetes.NixPodBuilder
+    Systemdnetes.NixPodBuilder.Command
+  build-depends:
+    , base           >=4.17 && <5
+    , systemdnetes
+    , text
+
+test-suite systemdnetes-nix-pod-builder-test
+  import:          shared
+  type:            exitcode-stdio-1.0
+  hs-source-dirs:  test
+  main-is:         Main.hs
+  other-modules:
+    Systemdnetes.NixPodBuilder.CommandSpec
+  build-depends:
+    , base           >=4.17 && <5
+    , hedgehog
+    , systemdnetes
+    , systemdnetes-nix-pod-builder
+    , tasty
+    , tasty-hedgehog
+    , text

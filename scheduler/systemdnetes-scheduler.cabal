@@ -1,0 +1,52 @@
+cabal-version:   3.0
+name:            systemdnetes-scheduler
+version:         0.1.0.0
+synopsis:        Pure scheduler for systemdnetes pod placement
+build-type:      Simple
+
+common shared
+  default-language: GHC2021
+  default-extensions:
+    DataKinds
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingStrategies
+    FlexibleContexts
+    GADTs
+    LambdaCase
+    OverloadedStrings
+    ScopedTypeVariables
+  ghc-options:
+    -Wall
+    -Wcompat
+    -O2
+
+library
+  import:          shared
+  hs-source-dirs:  src
+  exposed-modules:
+    Systemdnetes.Scheduler
+    Systemdnetes.Scheduler.Algo
+    Systemdnetes.Scheduler.Types
+  build-depends:
+    , base           >=4.17 && <5
+    , containers
+    , systemdnetes
+    , text
+
+test-suite systemdnetes-scheduler-test
+  import:          shared
+  type:            exitcode-stdio-1.0
+  hs-source-dirs:  test
+  main-is:         Main.hs
+  other-modules:
+    Systemdnetes.Scheduler.AlgoSpec
+  build-depends:
+    , base           >=4.17 && <5
+    , containers
+    , hedgehog
+    , systemdnetes
+    , systemdnetes-scheduler
+    , tasty
+    , tasty-hedgehog
+    , text
