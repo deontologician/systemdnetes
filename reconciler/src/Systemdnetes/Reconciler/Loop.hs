@@ -11,12 +11,14 @@ import Control.Concurrent (threadDelay)
 import Data.Text (Text)
 import Polysemy
 import Systemdnetes.Domain.Node (NodeName (..))
-import Systemdnetes.Domain.Pod (Pod (..), PodName (..), PodSpec (..), PodState (..))
+import Systemdnetes.Domain.Pod (NetworkInfo (..), Pod (..), PodName (..), PodSpec (..), PodState (..))
 import Systemdnetes.Domain.Reconcile (ReconcileAction (..), reconcilePod)
+import Systemdnetes.Effects.IpAllocator (IpAllocator, allocateIp)
 import Systemdnetes.Effects.Log (Log, logInfo, logWarn)
 import Systemdnetes.Effects.NodeStore (NodeStore, listNodes)
-import Systemdnetes.Effects.Store (Store, assignPodNode, getPod, listPods, setPodState)
+import Systemdnetes.Effects.Store (Store, assignPodNode, getPod, listPods, setPodNetwork, setPodState)
 import Systemdnetes.Effects.Systemd (Systemd, getContainer, rebuildContainer, stopContainer)
+import Systemdnetes.Effects.WireGuardControl (WireGuardControl, generateKeyPair)
 import Systemdnetes.Scheduler (ScheduleResult (..), schedule)
 
 newtype ReconcileConfig = ReconcileConfig
@@ -36,7 +38,7 @@ defaultReconcileConfig = ReconcileConfig {rcIntervalMicroseconds = 10_000_000}
 --
 -- Returns the list of actions taken.
 reconcileOnce ::
-  (Member Store r, Member NodeStore r, Member Systemd r, Member Log r) =>
+  (Member Store r, Member NodeStore r, Member Systemd r, Member Log r, Member IpAllocator r, Member WireGuardControl r) =>
   Sem r [ReconcileAction]
 reconcileOnce = do
   -- Phase 1: Gather state
@@ -48,6 +50,13 @@ reconcileOnce = do
   mapM_
     ( \(pName, nName) -> do
         assignPodNode pName nName
+        -- Allocate network resources for the newly scheduled pod
+        mIp <- allocateIp pName
+        case mIp of
+          Nothing -> logWarn $ "IP exhausted for " <> showPodName pName
+          Just ip -> do
+            keyPair <- generateKeyPair
+            setPodNetwork pName (NetworkInfo ip keyPair)
         logInfo $ "Scheduled " <> showPodName pName <> " on " <> showNodeName nName
     )
     (srAssignments sr)
@@ -96,20 +105,22 @@ executeAction ::
 executeAction = \case
   StartPod pName nName -> do
     logInfo $ "Starting " <> showPodName pName <> " on " <> showNodeName nName
-    -- Look up the pod's flake ref from the store
     mPod <- getPod pName
     case mPod of
       Just pod -> do
         let flakeRef = podFlakeRef (podSpec pod)
-        rebuildContainer nName pName flakeRef Nothing
+            mIp = netIp <$> podNetwork pod
+        rebuildContainer nName pName flakeRef mIp
         setPodState pName Running
       Nothing ->
         logWarn $ "StartPod: pod " <> showPodName pName <> " not found in store"
   RebuildPod pName nName flakeRef -> do
     logInfo $ "Rebuilding " <> showPodName pName <> " on " <> showNodeName nName
+    mPod <- getPod pName
+    let mIp = mPod >>= podNetwork >>= \ni -> Just (netIp ni)
     setPodState pName Rebuilding
     stopContainer nName pName
-    rebuildContainer nName pName flakeRef Nothing
+    rebuildContainer nName pName flakeRef mIp
     setPodState pName Running
   StopPod pName nName -> do
     logInfo $ "Stopping " <> showPodName pName <> " on " <> showNodeName nName
@@ -120,7 +131,7 @@ executeAction = \case
 
 -- | Run reconcileOnce in a loop with threadDelay.
 reconcileLoop ::
-  (Member Store r, Member NodeStore r, Member Systemd r, Member Log r, Member (Embed IO) r) =>
+  (Member Store r, Member NodeStore r, Member Systemd r, Member Log r, Member IpAllocator r, Member WireGuardControl r, Member (Embed IO) r) =>
   ReconcileConfig ->
   Sem r ()
 reconcileLoop cfg = do

@@ -27,7 +27,8 @@ tests =
       testPropertyNamed "multiple pods limited capacity partial scheduling" "prop_multiplePodLimitedCapacity" prop_multiplePodLimitedCapacity,
       testPropertyNamed "no nodes pods stay pending with warnings" "prop_noNodesPodsPending" prop_noNodesPodsPending,
       testPropertyNamed "executeAction StartPod updates state and creates container" "prop_executeStartPod" prop_executeStartPod,
-      testPropertyNamed "executeAction RebuildPod stops and rebuilds" "prop_executeRebuildPod" prop_executeRebuildPod
+      testPropertyNamed "executeAction RebuildPod stops and rebuilds" "prop_executeRebuildPod" prop_executeRebuildPod,
+      testPropertyNamed "scheduled pod gets network info allocated" "prop_scheduledPodGetsNetworkInfo" prop_scheduledPodGetsNetworkInfo
     ]
 
 -- Test helpers
@@ -225,3 +226,24 @@ prop_executeRebuildPod = property $ do
           annotate $ "Expected ContainerRunning, got: " <> show other
           failure
     Nothing -> failure
+
+-- | After reconcileOnce, a scheduled pod should have podNetwork populated
+-- (IP allocated and WG keys generated).
+prop_scheduledPodGetsNetworkInfo :: Property
+prop_scheduledPodGetsNetworkInfo = property $ do
+  let node = mkWorkerNode "worker-1" 2000 4096
+      spec = mkPodSpec "net-pod" "github:user/repo" 500 512
+      cfg =
+        defaultPureConfig
+          { pureNodeStoreState = Map.singleton (NodeName "worker-1") node
+          }
+      result = runAppPure cfg $ do
+        submitPod spec
+        reconcileOnce
+  case Map.lookup (PodName "net-pod") (pureResultStore result) of
+    Just pod -> do
+      assert $ isJust (podNode pod)
+      assert $ isJust (podNetwork pod)
+    Nothing -> do
+      annotate "Expected pod to exist in store"
+      failure
