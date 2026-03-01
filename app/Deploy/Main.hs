@@ -21,12 +21,14 @@ main = do
       exitFailure
 
   numWorkers <- maybe 2 read <$> lookupEnv "NUM_WORKERS"
+  remoteHost <- fmap T.pack <$> lookupEnv "REMOTE_HOST"
 
   let cfg =
         DeployConfig
           { deployFlyApp = flyApp,
             deployWorkerCount = numWorkers,
-            deploySshKeyDir = "deploy/.ssh"
+            deploySshKeyDir = "deploy/.ssh",
+            deployRemoteHost = remoteHost
           }
 
   case args of
@@ -56,5 +58,6 @@ main = do
       putStrLn "  redeploy   Update existing deployment (rebuild + push images)"
       putStrLn ""
       putStrLn "Environment:"
-      putStrLn "  NUM_WORKERS  Number of worker machines (default: 2)"
+      putStrLn "  NUM_WORKERS   Number of worker machines (default: 2)"
+      putStrLn "  REMOTE_HOST   SSH host for remote nix builds (default: local)"
       exitFailure

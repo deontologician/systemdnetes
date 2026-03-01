@@ -17,7 +17,8 @@ data FlyApp = FlyApp
 data DeployConfig = DeployConfig
   { deployFlyApp :: FlyApp,
     deployWorkerCount :: Int,
-    deploySshKeyDir :: FilePath
+    deploySshKeyDir :: FilePath,
+    deployRemoteHost :: Maybe Text
   }
   deriving stock (Eq, Show)
 

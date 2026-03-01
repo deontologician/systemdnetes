@@ -19,7 +19,7 @@ import Systemdnetes.Deploy.Cmd
 import Systemdnetes.Deploy.Config
 import Systemdnetes.Deploy.Fly
 import Systemdnetes.Deploy.HttpReq
-import Systemdnetes.Deploy.Nix
+import Systemdnetes.Deploy.Nix (buildImages)
 import Systemdnetes.Deploy.Skopeo
 import Systemdnetes.Effects.Log
 
@@ -46,8 +46,7 @@ bootstrap cfg = runEither $ do
   liftE $ ensureApp app
 
   -- 3-4. Build images
-  liftE $ nixBuild ".#container" "result-container"
-  liftE $ nixBuild ".#worker" "result-worker"
+  liftE $ buildImages cfg
 
   -- 5. Authenticate registry and push images
   liftE authRegistry

@@ -27,7 +27,8 @@ testConfig =
   DeployConfig
     { deployFlyApp = FlyApp "test-app" "ord",
       deployWorkerCount = 2,
-      deploySshKeyDir = "/tmp/test-ssh"
+      deploySshKeyDir = "/tmp/test-ssh",
+      deployRemoteHost = Nothing
     }
 
 cooperativeCmdHandler :: Text -> [Text] -> Maybe CmdResult

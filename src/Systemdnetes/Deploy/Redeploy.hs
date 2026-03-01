@@ -13,7 +13,7 @@ import Systemdnetes.Deploy.Cmd
 import Systemdnetes.Deploy.Config
 import Systemdnetes.Deploy.Fly
 import Systemdnetes.Deploy.HttpReq
-import Systemdnetes.Deploy.Nix
+import Systemdnetes.Deploy.Nix (buildImages)
 import Systemdnetes.Deploy.Skopeo
 import Systemdnetes.Effects.Log
 
@@ -34,8 +34,7 @@ redeploy cfg = runEither $ do
   liftE checkPrereqs
 
   -- 2. Build + push both images
-  liftE $ nixBuild ".#container" "result-container"
-  liftE $ nixBuild ".#worker" "result-worker"
+  liftE $ buildImages cfg
   liftE authRegistry
   liftE $ pushImage "result-container" registryOrch
   liftE $ pushImage "result-worker" registryWorker
