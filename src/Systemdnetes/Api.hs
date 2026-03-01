@@ -20,7 +20,7 @@ import Network.Wai (Request, Response, pathInfo, requestMethod, responseLBS)
 import Polysemy
 import Systemdnetes.Domain.Cluster (buildClusterState)
 import Systemdnetes.Domain.Node (HealthStatus (..), Node (..), NodeName (..), NodeStatus (..))
-import Systemdnetes.Domain.Pod (Pod (..), PodName (..), PodSpec (..))
+import Systemdnetes.Domain.Pod (FlakeRef, Pod (..), PodName (..), PodSpec (..))
 import Systemdnetes.Effects.FileServer (FileServer, readStaticFile)
 import Systemdnetes.Effects.Log (Log, logInfo)
 import Systemdnetes.Effects.NodeStore (NodeStore, getNode, listNodes, registerNode, removeNode)
@@ -31,10 +31,11 @@ import Systemdnetes.Sse (sseLogResponse)
 
 handleRequest ::
   (Member Log r, Member Store r, Member NodeStore r, Member Ssh r, Member FileServer r, Member Systemd r) =>
+  [FlakeRef] ->
   LBS.ByteString ->
   Request ->
   Sem r Response
-handleRequest body req =
+handleRequest flakes body req =
   route (requestMethod req) (pathInfo req) body
   where
     route "GET" [] _ = do
@@ -49,6 +50,9 @@ handleRequest body req =
       pods <- listPods
       let cs = buildClusterState nodes pods
       pure $ jsonResponse status200 cs
+    route "GET" ["api", "v1", "flakes"] _ = do
+      logInfo "GET /api/v1/flakes"
+      pure $ jsonResponse status200 flakes
     route "POST" ["api", "v1", "nodes"] body = do
       logInfo "POST /api/v1/nodes"
       case eitherDecode body of

@@ -36,7 +36,8 @@ tests =
       testPropertyNamed "GET /api/v1/nodes on empty store returns 200" "prop_listNodesEmpty" prop_listNodesEmpty,
       testPropertyNamed "GET /api/v1/pods/<name>/logs not found returns 404" "prop_getPodLogsNotFound" prop_getPodLogsNotFound,
       testPropertyNamed "GET /api/v1/pods/<name>/logs unscheduled returns 400" "prop_getPodLogsNotScheduled" prop_getPodLogsNotScheduled,
-      testPropertyNamed "GET /api/v1/pods/<name>/logs scheduled returns 200" "prop_getPodLogsScheduled" prop_getPodLogsScheduled
+      testPropertyNamed "GET /api/v1/pods/<name>/logs scheduled returns 200" "prop_getPodLogsScheduled" prop_getPodLogsScheduled,
+      testPropertyNamed "GET /api/v1/flakes returns configured flakes" "prop_listFlakes" prop_listFlakes
     ]
 
 -- | Run handleRequest through the full pure interpreter stack.
@@ -46,11 +47,15 @@ runPureApi = runPureApiWith defaultPureConfig
 
 -- | Run handleRequest with a custom pure config, seeding the dashboard file.
 runPureApiWith :: App.PureAppConfig -> LBS.ByteString -> Request -> Response
-runPureApiWith cfg body req =
+runPureApiWith = runPureApiWithFlakes []
+
+-- | Run handleRequest with a custom pure config and flake list.
+runPureApiWithFlakes :: [FlakeRef] -> App.PureAppConfig -> LBS.ByteString -> Request -> Response
+runPureApiWithFlakes flakes cfg body req =
   pureResultValue $
     runAppPure
       cfg {App.pureFiles = Map.insert "static/index.html" "<html>test</html>" (App.pureFiles cfg)}
-      (handleRequest body req)
+      (handleRequest flakes body req)
 
 -- | Extract status from a WAI Response.
 responseStatus :: Response -> Status
@@ -192,6 +197,13 @@ prop_getPodLogsScheduled = property $ do
             App.pureNodeStoreState = Map.singleton nodeN node
           }
       resp = runPureApiWith cfg "" (testRequest "GET" ["api", "v1", "pods", podNameText podN, "logs"])
+  responseStatus resp === status200
+
+-- | The flakes endpoint should return 200 with the configured flake list.
+prop_listFlakes :: Property
+prop_listFlakes = property $ do
+  flakes <- forAll $ Gen.list (Range.linear 0 5) (FlakeRef <$> genText)
+  let resp = runPureApiWithFlakes flakes defaultPureConfig "" (testRequest "GET" ["api", "v1", "flakes"])
   responseStatus resp === status200
 
 podNameText :: PodName -> Text

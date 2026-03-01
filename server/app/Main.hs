@@ -35,6 +35,10 @@ main = do
   sshKeyFile <- lookupEnv "SYSTEMDNETES_SSH_KEY_FILE"
   let sshCfg = SshConfig {sshKeyFile = sshKeyFile, sshUser = "systemdnetes"}
 
+  -- Parse flake registry from env (comma-separated flake refs)
+  flakesStr <- fromMaybe "" <$> lookupEnv "SYSTEMDNETES_FLAKES"
+  let flakes = map (FlakeRef . T.strip) $ filter (not . T.null) $ T.splitOn "," (T.pack flakesStr)
+
   let runApp' :: Sem AppEffects a -> IO a
       runApp' = runApp sshCfg podStore nodeStore allocatorState wgIface hostsDir
   runApp' $ logInfo "Starting systemdnetes on :8080"
@@ -44,5 +48,5 @@ main = do
 
   run 8080 $ \req respond -> do
     body <- strictRequestBody req
-    response <- runApp' (handleRequest body req)
+    response <- runApp' (handleRequest flakes body req)
     respond response
