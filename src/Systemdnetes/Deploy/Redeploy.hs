@@ -8,7 +8,7 @@ import Data.ByteString.Lazy.Char8 qualified as LBS8
 import Data.Text (Text)
 import Data.Text qualified as T
 import Polysemy
-import Systemdnetes.Deploy.Bootstrap (checkPrereqs, pollHealth, registerNode, verifyNodes)
+import Systemdnetes.Deploy.Bootstrap (authRegistry, checkPrereqs, pollHealth, registerNode, verifyNodes)
 import Systemdnetes.Deploy.Cmd
 import Systemdnetes.Deploy.Config
 import Systemdnetes.Deploy.Fly
@@ -36,6 +36,7 @@ redeploy cfg = runEither $ do
   -- 2. Build + push both images
   liftE $ nixBuild ".#container" "result-container"
   liftE $ nixBuild ".#worker" "result-worker"
+  liftE authRegistry
   liftE $ pushImage "result-container" registryOrch
   liftE $ pushImage "result-worker" registryWorker
 
