@@ -121,11 +121,11 @@ These are high level tasks that need to be implemented.
 
 
 ## UI improvements
-- [ ] Add node ips
-- [ ] Add pod ips (wireguard ips)
-- [ ] Show a nice animation when the pod is transitioning states
-- [ ] Show the orchestrator as a separate kind of node from workers
-- [ ] Allow a user of the UI to pick from a select list of flakes
+- [x] Add node ips
+- [x] Add pod ips (wireguard ips)
+- [x] Show a nice animation when the pod is transitioning states
+- [x] Show the orchestrator as a separate kind of node from workers
+- [x] Allow a user of the UI to pick from a select list of flakes
 
 ## Deferred / Out of Scope for PoC
 
