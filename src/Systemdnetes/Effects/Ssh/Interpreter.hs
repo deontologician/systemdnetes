@@ -1,5 +1,6 @@
 module Systemdnetes.Effects.Ssh.Interpreter
-  ( sshToPure,
+  ( SshConfig (..),
+    sshToPure,
     sshToIO,
   )
 where
@@ -14,6 +15,12 @@ import System.Process (readProcessWithExitCode)
 import Systemdnetes.Domain.Node (Node (..), NodeName)
 import Systemdnetes.Effects.Ssh
 
+data SshConfig = SshConfig
+  { sshKeyFile :: Maybe FilePath,
+    sshUser :: Text
+  }
+  deriving stock (Eq, Show)
+
 -- | Pure interpreter: known nodes return canned output, unknown return error.
 sshToPure ::
   Map NodeName Text ->
@@ -26,22 +33,28 @@ sshToPure known = interpret $ \case
       Nothing -> Left "unreachable"
 
 -- | IO interpreter: shells out to the ssh command.
-sshToIO :: (Member (Embed IO) r) => Sem (Ssh ': r) a -> Sem r a
-sshToIO = interpret $ \case
+sshToIO :: (Member (Embed IO) r) => SshConfig -> Sem (Ssh ': r) a -> Sem r a
+sshToIO cfg = interpret $ \case
   RunSshCommand node cmd -> embed $ do
     let addr = T.unpack (nodeAddress node)
+        keyArgs = case sshKeyFile cfg of
+          Just kf -> ["-i", kf]
+          Nothing -> []
+        target = T.unpack (sshUser cfg) <> "@" <> addr
     (exitCode, stdout, stderr) <-
       readProcessWithExitCode
         "ssh"
-        [ "-o",
-          "ConnectTimeout=2",
-          "-o",
-          "StrictHostKeyChecking=no",
-          "-o",
-          "UserKnownHostsFile=/dev/null",
-          addr,
-          T.unpack cmd
-        ]
+        ( keyArgs
+            ++ [ "-o",
+                 "ConnectTimeout=2",
+                 "-o",
+                 "StrictHostKeyChecking=no",
+                 "-o",
+                 "UserKnownHostsFile=/dev/null",
+                 target,
+                 T.unpack cmd
+               ]
+        )
         ""
     pure $ case exitCode of
       ExitSuccess -> Right (T.pack stdout)

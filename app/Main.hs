@@ -28,8 +28,12 @@ main = do
   -- WireGuard interface name (default: systemdnetes)
   wgIface <- maybe "systemdnetes" T.pack <$> lookupEnv "SYSTEMDNETES_WG_IFACE"
 
+  -- SSH config for reaching worker nodes
+  sshKeyFile <- lookupEnv "SYSTEMDNETES_SSH_KEY_FILE"
+  let sshCfg = SshConfig {sshKeyFile = sshKeyFile, sshUser = "systemdnetes"}
+
   let runApp' :: Sem AppEffects a -> IO a
-      runApp' = runApp podStore nodeStore allocatorState wgIface hostsDir
+      runApp' = runApp sshCfg podStore nodeStore allocatorState wgIface hostsDir
   runApp' $ logInfo "Starting systemdnetes on :8080"
   run 8080 $ \req respond -> do
     body <- strictRequestBody req

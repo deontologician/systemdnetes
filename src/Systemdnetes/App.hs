@@ -51,6 +51,7 @@ type AppEffects =
    ]
 
 runApp ::
+  SshConfig ->
   TVar (Map PodName Pod) ->
   TVar (Map NodeName Node) ->
   TVar IpAllocatorState ->
@@ -58,11 +59,11 @@ runApp ::
   FilePath ->
   Sem AppEffects a ->
   IO a
-runApp podStore nodeStore allocatorState wgIface hostsDir =
+runApp sshCfg podStore nodeStore allocatorState wgIface hostsDir =
   runFinal
     . embedToFinal
     . fileServerToIO
-    . sshToIO
+    . sshToIO sshCfg
     . systemdToIO
     . dnsRegistryToIO hostsDir
     . wireGuardControlToIO wgIface
