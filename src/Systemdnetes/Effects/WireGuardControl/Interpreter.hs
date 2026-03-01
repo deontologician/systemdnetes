@@ -12,7 +12,7 @@ import Data.Text qualified as T
 import Polysemy
 import Polysemy.State
 import System.Process (readProcess)
-import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName)
+import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName, NodeRole (..))
 import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Systemdnetes.Domain.WireGuard
   ( WgKeyPair (..),
@@ -69,12 +69,12 @@ wireGuardControlToIO iface = interpret $ \case
   AddPeer nodeName peer -> do
     let args = renderSetPeerArgs iface peer
         cmd = T.intercalate " " args
-    _ <- runSshCommand (Node nodeName "" (NodeCapacity (Millicores 0) (Mebibytes 0))) cmd
+    _ <- runSshCommand (Node nodeName "" (NodeCapacity (Millicores 0) (Mebibytes 0)) Worker) cmd
     pure ()
   RemovePeer nodeName pubKey -> do
     let args = renderRemovePeerArgs iface pubKey
         cmd = T.intercalate " " args
-    _ <- runSshCommand (Node nodeName "" (NodeCapacity (Millicores 0) (Mebibytes 0))) cmd
+    _ <- runSshCommand (Node nodeName "" (NodeCapacity (Millicores 0) (Mebibytes 0)) Worker) cmd
     pure ()
   ListPeers _nodeName ->
     -- In production, would parse `wg show <iface> dump` output.

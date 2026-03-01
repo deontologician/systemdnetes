@@ -14,7 +14,7 @@ import Network.Wai.Internal (Request (..), Response (..))
 import Systemdnetes.Api (handleRequest)
 import Systemdnetes.App (PureResult (..), defaultPureConfig, runAppPure)
 import Systemdnetes.App qualified as App
-import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName (..))
+import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName (..), NodeRole (..))
 import Systemdnetes.Domain.Pod (FlakeRef (..), Pod (..), PodName (..), PodSpec (..), PodState (..), ResourceRequests (..))
 import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Test.Tasty (TestTree, testGroup)
@@ -86,6 +86,7 @@ genNode =
   (Node . NodeName <$> genText)
     <*> genText
     <*> genCapacity
+    <*> pure Worker
 
 -- | The health endpoint should always succeed, giving load balancers and
 -- uptime monitors a reliable signal that the server is alive.
@@ -183,7 +184,7 @@ prop_getPodLogsScheduled = property $ do
   nodeAddr <- forAll genText
   let podN = podName spec
       nodeN = NodeName "test-node"
-      node = Node nodeN nodeAddr (NodeCapacity (Millicores 2000) (Mebibytes 2048))
+      node = Node nodeN nodeAddr (NodeCapacity (Millicores 2000) (Mebibytes 2048)) Worker
       pod = Pod {podSpec = spec, podState = Scheduled, podNode = Just nodeN, podNetwork = Nothing}
       cfg =
         defaultPureConfig

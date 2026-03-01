@@ -6,7 +6,7 @@ import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Polysemy
-import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName (..))
+import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName (..), NodeRole (..))
 import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Systemdnetes.Effects.Ssh
 import Systemdnetes.Effects.Ssh.Interpreter
@@ -31,7 +31,7 @@ genCapacity =
     <*> (Mebibytes <$> Gen.int (Range.linear 512 8192))
 
 genNode :: Gen Node
-genNode = (Node . NodeName <$> genText) <*> genText <*> genCapacity
+genNode = (Node . NodeName <$> genText) <*> genText <*> genCapacity <*> pure Worker
 
 prop_knownNode :: Property
 prop_knownNode = property $ do

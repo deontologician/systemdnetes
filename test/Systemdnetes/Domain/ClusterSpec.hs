@@ -5,7 +5,7 @@ import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Systemdnetes.Domain.Cluster
-import Systemdnetes.Domain.Node (Node (..), NodeName (..))
+import Systemdnetes.Domain.Node (Node (..), NodeName (..), NodeRole (..))
 import Systemdnetes.Domain.Pod
 import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Test.Tasty (TestTree, testGroup)
@@ -34,6 +34,7 @@ genNode =
   (Node . NodeName <$> genText)
     <*> genText
     <*> genCapacity
+    <*> pure Worker
 
 genPodSpec :: Gen PodSpec
 genPodSpec =

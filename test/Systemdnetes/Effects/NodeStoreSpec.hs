@@ -6,7 +6,7 @@ import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Polysemy
-import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName (..))
+import Systemdnetes.Domain.Node (Node (..), NodeCapacity (..), NodeName (..), NodeRole (..))
 import Systemdnetes.Domain.Resource (Mebibytes (..), Millicores (..))
 import Systemdnetes.Effects.NodeStore
 import Systemdnetes.Effects.NodeStore.Interpreter
@@ -35,7 +35,7 @@ genCapacity =
     <*> (Mebibytes <$> Gen.int (Range.linear 512 8192))
 
 genNode :: Gen Node
-genNode = (Node . NodeName <$> genText) <*> genText <*> genCapacity
+genNode = (Node . NodeName <$> genText) <*> genText <*> genCapacity <*> pure Worker
 
 prop_registerGet :: Property
 prop_registerGet = property $ do
@@ -80,8 +80,8 @@ prop_registerOverwrite = property $ do
   addr2 <- forAll genText
   cap1 <- forAll genCapacity
   cap2 <- forAll genCapacity
-  let node1 = Node name addr1 cap1
-      node2 = Node name addr2 cap2
+  let node1 = Node name addr1 cap1 Worker
+      node2 = Node name addr2 cap2 Worker
       (_, result) = run $ nodeStoreToPure Map.empty $ do
         registerNode node1
         registerNode node2

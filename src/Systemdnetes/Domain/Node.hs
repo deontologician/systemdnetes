@@ -1,6 +1,7 @@
 module Systemdnetes.Domain.Node
   ( NodeName (..),
     NodeCapacity (..),
+    NodeRole (..),
     Node (..),
     HealthStatus (..),
     NodeStatus (..),
@@ -23,10 +24,15 @@ data NodeCapacity = NodeCapacity
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
+data NodeRole = Orchestrator | Worker
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
+
 data Node = Node
   { nodeName :: NodeName,
     nodeAddress :: Text,
-    nodeCapacity :: NodeCapacity
+    nodeCapacity :: NodeCapacity,
+    nodeRole :: NodeRole
   }
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)

@@ -17,6 +17,7 @@ tests =
     [ testPropertyNamed "NodeName JSON round-trip" "prop_nodeNameJson" prop_nodeNameJson,
       testPropertyNamed "Node JSON round-trip" "prop_nodeJson" prop_nodeJson,
       testPropertyNamed "NodeCapacity JSON round-trip" "prop_nodeCapacityJson" prop_nodeCapacityJson,
+      testPropertyNamed "NodeRole JSON round-trip" "prop_nodeRoleJson" prop_nodeRoleJson,
       testPropertyNamed "HealthStatus JSON round-trip" "prop_healthStatusJson" prop_healthStatusJson,
       testPropertyNamed "NodeStatus JSON round-trip" "prop_nodeStatusJson" prop_nodeStatusJson
     ]
@@ -33,8 +34,11 @@ genCapacity =
     <$> (Millicores <$> Gen.int (Range.linear 1000 8000))
     <*> (Mebibytes <$> Gen.int (Range.linear 512 8192))
 
+genNodeRole :: Gen NodeRole
+genNodeRole = Gen.element [Orchestrator, Worker]
+
 genNode :: Gen Node
-genNode = Node <$> genNodeName <*> genText <*> genCapacity
+genNode = Node <$> genNodeName <*> genText <*> genCapacity <*> genNodeRole
 
 genHealthStatus :: Gen HealthStatus
 genHealthStatus = Gen.element [Healthy, Unhealthy, Unknown]
@@ -60,6 +64,11 @@ prop_nodeJson = property $ do
 prop_nodeCapacityJson :: Property
 prop_nodeCapacityJson = property $ do
   x <- forAll genCapacity
+  tripping x encode eitherDecode
+
+prop_nodeRoleJson :: Property
+prop_nodeRoleJson = property $ do
+  x <- forAll genNodeRole
   tripping x encode eitherDecode
 
 prop_healthStatusJson :: Property
