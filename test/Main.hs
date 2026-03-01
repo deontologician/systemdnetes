@@ -1,6 +1,11 @@
 module Main (main) where
 
 import Systemdnetes.ApiSpec qualified as ApiSpec
+import Systemdnetes.Deploy.BootstrapSpec qualified as BootstrapSpec
+import Systemdnetes.Deploy.CmdSpec qualified as CmdSpec
+import Systemdnetes.Deploy.ConfigSpec qualified as ConfigSpec
+import Systemdnetes.Deploy.HttpReqSpec qualified as HttpReqSpec
+import Systemdnetes.Deploy.RedeploySpec qualified as RedeploySpec
 import Systemdnetes.Domain.ClusterSpec qualified as ClusterSpec
 import Systemdnetes.Domain.DnsSpec qualified as DnsSpec
 import Systemdnetes.Domain.NetworkSpec qualified as NetworkSpec
@@ -44,5 +49,10 @@ main =
         SystemdSpec.tests,
         ReconcileSpec.tests,
         UpdateChainSpec.tests,
-        WireGuardControlSpec.tests
+        WireGuardControlSpec.tests,
+        CmdSpec.tests,
+        HttpReqSpec.tests,
+        ConfigSpec.tests,
+        BootstrapSpec.tests,
+        RedeploySpec.tests
       ]

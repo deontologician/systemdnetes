@@ -113,6 +113,11 @@ test-suite systemdnetes-test
   main-is:         Main.hs
   other-modules:
     Systemdnetes.ApiSpec
+    Systemdnetes.Deploy.BootstrapSpec
+    Systemdnetes.Deploy.CmdSpec
+    Systemdnetes.Deploy.ConfigSpec
+    Systemdnetes.Deploy.HttpReqSpec
+    Systemdnetes.Deploy.RedeploySpec
     Systemdnetes.Domain.ClusterSpec
     Systemdnetes.Domain.DnsSpec
     Systemdnetes.Domain.NetworkSpec
