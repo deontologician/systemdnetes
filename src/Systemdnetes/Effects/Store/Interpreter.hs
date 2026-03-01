@@ -45,6 +45,9 @@ storeToPure initial =
           AssignPodNode name node ->
             modify' @StoreState $
               Map.adjust (\pod -> pod {podNode = Just node, podState = Scheduled}) name
+          SetPodNetwork name netInfo ->
+            modify' @StoreState $
+              Map.adjust (\pod -> pod {podNetwork = Just netInfo}) name
       )
 
 -- | IO interpreter backed by a TVar for concurrent access across requests.
@@ -71,3 +74,8 @@ storeToIO var = interpret $ \case
       atomically $
         TVar.modifyTVar' var $
           Map.adjust (\pod -> pod {podNode = Just node, podState = Scheduled}) name
+  SetPodNetwork name netInfo ->
+    embed $
+      atomically $
+        TVar.modifyTVar' var $
+          Map.adjust (\pod -> pod {podNetwork = Just netInfo}) name

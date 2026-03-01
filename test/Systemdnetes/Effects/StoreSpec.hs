@@ -7,7 +7,9 @@ import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Polysemy
 import Systemdnetes.Domain.Node (NodeName (..))
-import Systemdnetes.Domain.Pod (FlakeRef (..), Pod (..), PodName (..), PodSpec (..), PodState (..), ResourceRequests (..))
+import Systemdnetes.Domain.Network (IPv4 (..))
+import Systemdnetes.Domain.Pod (FlakeRef (..), NetworkInfo (..), Pod (..), PodName (..), PodSpec (..), PodState (..), ResourceRequests (..))
+import Systemdnetes.Domain.WireGuard (WgKeyPair (..), WgPrivateKey (..), WgPublicKey (..))
 import Systemdnetes.Effects.Store
 import Systemdnetes.Effects.Store.Interpreter
 import Test.Tasty (TestTree, testGroup)
@@ -28,7 +30,8 @@ tests =
       testPropertyNamed "updatePodSpec changes the flake ref" "prop_updatePodSpecChangesFlakeRef" prop_updatePodSpecChangesFlakeRef,
       testPropertyNamed "setPodState changes the state" "prop_setPodStateChangesState" prop_setPodStateChangesState,
       testPropertyNamed "assignPodNode sets node and Scheduled" "prop_assignPodNodeSetsNodeAndScheduled" prop_assignPodNodeSetsNodeAndScheduled,
-      testPropertyNamed "updatePodSpec on unknown pod is noop" "prop_updatePodSpecUnknownIsNoop" prop_updatePodSpecUnknownIsNoop
+      testPropertyNamed "updatePodSpec on unknown pod is noop" "prop_updatePodSpecUnknownIsNoop" prop_updatePodSpecUnknownIsNoop,
+      testPropertyNamed "setPodNetwork stores network info" "prop_setPodNetwork" prop_setPodNetwork
     ]
 
 genText :: Gen Text
@@ -166,3 +169,22 @@ prop_updatePodSpecUnknownIsNoop = property $ do
   let (st, _) = run $ storeToPure Map.empty $ do
         updatePodSpec (podName spec) spec
   st === Map.empty
+
+genNetworkInfo :: Gen NetworkInfo
+genNetworkInfo = do
+  ip <- IPv4 <$> Gen.word32 Range.linearBounded
+  privKey <- WgPrivateKey <$> genText
+  pubKey <- WgPublicKey <$> genText
+  pure $ NetworkInfo ip (WgKeyPair privKey pubKey)
+
+prop_setPodNetwork :: Property
+prop_setPodNetwork = property $ do
+  spec <- forAll genPodSpec
+  netInfo <- forAll genNetworkInfo
+  let (_, result) = run $ storeToPure Map.empty $ do
+        submitPod spec
+        setPodNetwork (podName spec) netInfo
+        getPod (podName spec)
+  case result of
+    Just pod -> podNetwork pod === Just netInfo
+    Nothing -> failure

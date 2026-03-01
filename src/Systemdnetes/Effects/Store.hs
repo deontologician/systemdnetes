@@ -7,12 +7,13 @@ module Systemdnetes.Effects.Store
     updatePodSpec,
     setPodState,
     assignPodNode,
+    setPodNetwork,
   )
 where
 
 import Polysemy
 import Systemdnetes.Domain.Node (NodeName)
-import Systemdnetes.Domain.Pod (Pod, PodName, PodSpec, PodState)
+import Systemdnetes.Domain.Pod (NetworkInfo, Pod, PodName, PodSpec, PodState)
 
 data Store m a where
   SubmitPod :: PodSpec -> Store m ()
@@ -22,5 +23,6 @@ data Store m a where
   UpdatePodSpec :: PodName -> PodSpec -> Store m ()
   SetPodState :: PodName -> PodState -> Store m ()
   AssignPodNode :: PodName -> NodeName -> Store m ()
+  SetPodNetwork :: PodName -> NetworkInfo -> Store m ()
 
 makeSem ''Store
