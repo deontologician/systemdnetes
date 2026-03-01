@@ -68,6 +68,23 @@ genPendingPod = do
   spec <- genPodSpec
   pure Pod {podSpec = spec, podState = Pending, podNode = Nothing, podNetwork = Nothing}
 
+-- | Generate a list of pending pods with unique names.
+genUniquePendingPods :: Range Int -> Gen [Pod]
+genUniquePendingPods range = do
+  n <- Gen.int range
+  names <- Gen.list (Range.singleton n) genText
+  let uniqueNames = map (PodName . \(i, t) -> t <> T.pack (show i)) (zip [(0 :: Int) ..] names)
+  mapM (genPendingPodWithName) uniqueNames
+
+genPendingPodWithName :: PodName -> Gen Pod
+genPendingPodWithName name = do
+  cpuVal <- genMillicores
+  memVal <- genMebibytes
+  flake <- FlakeRef <$> genText
+  replicas <- Gen.int (Range.linear 1 5)
+  let spec = PodSpec {podName = name, podFlakeRef = flake, podResources = mkValidResources cpuVal memVal, podReplicas = replicas}
+  pure Pod {podSpec = spec, podState = Pending, podNode = Nothing, podNetwork = Nothing}
+
 genWorkerNode :: Gen Node
 genWorkerNode = do
   name <- genNodeName
@@ -110,7 +127,7 @@ prop_alreadyScheduledIgnored = property $ do
 prop_assignmentsFit :: Property
 prop_assignmentsFit = property $ do
   nodes <- forAll $ Gen.list (Range.linear 1 5) genWorkerNode
-  pods <- forAll $ Gen.list (Range.linear 1 10) genPendingPod
+  pods <- forAll $ genUniquePendingPods (Range.linear 1 10)
   let result = schedule nodes pods
       ledger = buildNodeResources nodes []
   mapM_
@@ -133,7 +150,7 @@ prop_assignmentsFit = property $ do
 prop_noOvercommit :: Property
 prop_noOvercommit = property $ do
   nodes <- forAll $ Gen.list (Range.linear 1 5) genWorkerNode
-  pods <- forAll $ Gen.list (Range.linear 1 10) genPendingPod
+  pods <- forAll $ genUniquePendingPods (Range.linear 1 10)
   let result = schedule nodes pods
       assignedPods =
         [ pod {podState = Scheduled, podNode = Just assignedNode}
@@ -229,7 +246,7 @@ prop_invalidResourcesUnschedulable = property $ do
 prop_totalDecisionsEqualsPending :: Property
 prop_totalDecisionsEqualsPending = property $ do
   nodes <- forAll $ Gen.list (Range.linear 0 5) genWorkerNode
-  pods <- forAll $ Gen.list (Range.linear 0 15) genPendingPod
+  pods <- forAll $ genUniquePendingPods (Range.linear 0 15)
   let result = schedule nodes pods
       totalDecisions = length (srAssignments result) + length (srUnschedulable result)
   totalDecisions === length pods
