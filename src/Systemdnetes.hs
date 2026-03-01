@@ -27,6 +27,7 @@ module Systemdnetes
     module Systemdnetes.Effects.WireGuardControl.Interpreter,
     module Systemdnetes.Api,
     module Systemdnetes.App,
+    module Systemdnetes.Sse,
   )
 where
 
@@ -58,3 +59,4 @@ import Systemdnetes.Effects.Systemd
 import Systemdnetes.Effects.Systemd.Interpreter
 import Systemdnetes.Effects.WireGuardControl
 import Systemdnetes.Effects.WireGuardControl.Interpreter
+import Systemdnetes.Sse

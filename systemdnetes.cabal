@@ -67,6 +67,7 @@ library
     Systemdnetes.Effects.Systemd.Interpreter
     Systemdnetes.Effects.WireGuardControl
     Systemdnetes.Effects.WireGuardControl.Interpreter
+    Systemdnetes.Sse
   build-depends:
     , aeson
     , bytestring
